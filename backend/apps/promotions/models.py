@@ -68,7 +68,8 @@ class Coupon(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'coupons'
+        app_label = 'promotions'
+        db_table = 'promotions_coupon'
         verbose_name = '优惠券'
         verbose_name_plural = '优惠券'
 
@@ -108,6 +109,7 @@ class UserCoupon(models.Model):
 
     class Meta:
         db_table = 'user_coupons'
+        app_label = 'promotions'
         verbose_name = '用户优惠券'
         verbose_name_plural = '用户优惠券'
         unique_together = ['user', 'coupon']
@@ -141,6 +143,7 @@ class CouponRule(models.Model):
 
     class Meta:
         db_table = 'coupon_rules'
+        app_label = 'promotions'
         verbose_name = '优惠券发放规则'
         verbose_name_plural = '优惠券发放规则'
 
@@ -221,6 +224,7 @@ class Promotion(models.Model):
 
     class Meta:
         db_table = 'promotions'
+        app_label = 'promotions'
         verbose_name = '促销活动'
         verbose_name_plural = '促销活动'
 

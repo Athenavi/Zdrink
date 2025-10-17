@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from apps.core.permissions import IsShopOwnerOrStaff, HasShopPermission
 from django.db import transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
@@ -16,6 +15,8 @@ from .serializers import (
     OrderListSerializer, OrderDetailSerializer, CreateOrderSerializer,
     UpdateOrderStatusSerializer, OrderStatisticsSerializer
 )
+from ..core.permissions import IsShopOwnerOrStaff, HasShopPermission
+from ..products.models import Product, ProductSKU
 
 
 class CartViewSet(ModelViewSet):
@@ -67,7 +68,6 @@ class CartViewSet(ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _get_unit_price(self, data):
-        from apps.products.models import Product, ProductSKU
         product = Product.objects.get(id=data['product_id'])
 
         if data.get('sku_id'):
@@ -250,8 +250,8 @@ class OrderViewSet(ModelViewSet):
             'weekly': weekly_stats
         })
 
-    @action(detail=False, methods=['get'])
-    @HasShopPermission('report_view')
+    @action(detail=False, methods=['get'],
+            permission_classes=[HasShopPermission('report_view')])
     def sales_report(self, request):
         """销售报表"""
         start_date = request.GET.get('start_date')

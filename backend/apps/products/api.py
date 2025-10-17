@@ -1,10 +1,10 @@
 import csv
 
-from django.db import transaction
+from django.db import transaction, models
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, permissions, status, filters
+from rest_framework import generics, permissions, status, filters, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -19,7 +19,8 @@ from .serializers import (
 )
 
 
-class CategoryViewSet(ModelViewSet):
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -33,7 +34,8 @@ class CategoryViewSet(ModelViewSet):
         serializer.save(shop=self.request.tenant)
 
 
-class ProductViewSet(ModelViewSet):
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()  # 添加这一行
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description']
@@ -118,7 +120,8 @@ class ProductViewSet(ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class SpecificationViewSet(ModelViewSet):
+class SpecificationViewSet(viewsets.ModelViewSet):
+    queryset = Specification.objects.all()
     serializer_class = SpecificationSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -132,7 +135,8 @@ class SpecificationViewSet(ModelViewSet):
         serializer.save(shop=self.request.tenant)
 
 
-class ProductSKUViewSet(ModelViewSet):
+class ProductSKUViewSet(viewsets.ModelViewSet):
+    queryset = ProductSKU.objects.all()
     serializer_class = ProductSKUSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
