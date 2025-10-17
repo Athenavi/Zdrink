@@ -138,6 +138,8 @@ const goToCart = () => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/variables' as *;
+@use "sass:color";
 .menu-page {
   padding-bottom: 60px;
 

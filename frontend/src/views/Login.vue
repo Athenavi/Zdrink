@@ -90,8 +90,9 @@ const handleForgetPassword = () => {
   showFailToast('请联系管理员重置密码')
 }
 </script>
-
 <style scoped lang="scss">
+@use '../styles/variables' as *;
+@use "sass:color";
 .login-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #1989fa, #0081ff);

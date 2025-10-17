@@ -193,6 +193,8 @@ const getSkuSpecText = (sku) => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/variables' as *;
+@use "sass:color";
 .cart-page {
   padding-bottom: 80px;
 

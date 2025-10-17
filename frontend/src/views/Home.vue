@@ -173,6 +173,8 @@ const getShopTypeText = (type) => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/variables' as *;
+@use "sass:color";
 .home-page {
   padding-bottom: 50px;
 
@@ -269,12 +271,12 @@ const getShopTypeText = (type) => {
               border-radius: $border-radius;
 
               &.open {
-                background: lighten($success-color, 40%);
+                background: color.adjust($success-color, $lightness: 40%);
                 color: $success-color;
               }
 
               &.closed {
-                background: lighten($text-color-light, 40%);
+                background: color.adjust($text-color-light, $lightness: 40%);
                 color: $text-color-light;
               }
             }

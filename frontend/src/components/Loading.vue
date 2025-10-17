@@ -29,19 +29,15 @@ defineProps({
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 9999;
-  @include flex-center;
 
   .loading-content {
     background: white;
     padding: 20px;
-    border-radius: $border-radius-lg;
     text-align: center;
 
     .loading-text {
       display: block;
       margin-top: 10px;
-      font-size: $font-size-md;
-      color: $text-color;
     }
   }
 }
