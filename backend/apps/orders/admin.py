@@ -34,7 +34,7 @@ class OrderStatusLogInline(admin.TabularInline):
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
         'order_number', 'customer_name', 'customer_phone', 'status',
-        'order_type', 'total_amount', 'created_at', 'actions'
+        'order_type', 'total_amount', 'created_at', 'order_actions'  # 修改这里
     ]
     list_filter = ['status', 'order_type', 'payment_status', 'created_at', 'shop']
     search_fields = ['order_number', 'customer_name', 'customer_phone']
@@ -62,13 +62,13 @@ class OrderAdmin(admin.ModelAdmin):
         }),
     )
 
-    def actions(self, obj):
+    def order_actions(self, obj):  # 修改方法名
         return format_html(
             '<a href="/admin/orders/order/{}/change/">查看</a>',
             obj.id
         )
 
-    actions.short_description = '操作'
+    order_actions.short_description = '操作'  # 更新描述
 
 
 @admin.register(OrderPayment)

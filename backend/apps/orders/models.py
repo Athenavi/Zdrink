@@ -215,7 +215,7 @@ class OrderPayment(models.Model):
         ('refunded', '已退款'),
     )
 
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_payments')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, blank=True, verbose_name='交易ID')

@@ -29,7 +29,7 @@ class PaymentMethod(models.Model):
     config = models.JSONField(default=dict, verbose_name='支付配置')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='payment_methods')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='shop_payment_methods')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -59,7 +59,7 @@ class PaymentTransaction(models.Model):
     out_trade_no = models.CharField(max_length=64, verbose_name='商户订单号')
 
     # 关联订单
-    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payments')
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payment_transactions')
 
     # 支付信息
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)

@@ -167,3 +167,21 @@ FEIE_UKEY = config('FEIE_UKEY', default='')
 
 # 前端URL（用于生成二维码）
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],  # 如果有自定义模板目录
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+ROOT_URLCONF = 'zdrink_core.urls'

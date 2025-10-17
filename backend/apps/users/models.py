@@ -57,19 +57,34 @@ class User(AbstractUser):
         db_table = 'users'
 
     def save(self, *args, **kwargs):
+        # 先保存以获取id
+        super().save(*args, **kwargs)
+
+        # 保存后再生成会员号和推荐码（如果还没有的话）
+        needs_update = False
         if not self.membership_number:
             self.membership_number = self.generate_membership_number()
+            needs_update = True
+
         if not self.referral_code:
             self.referral_code = self.generate_referral_code()
-        super().save(*args, **kwargs)
+            needs_update = True
+
+        # 如果需要更新，再次保存
+        if needs_update:
+            # 使用update_fields只更新这两个字段，避免无限循环
+            super().save(update_fields=['membership_number', 'referral_code'])
 
     def generate_membership_number(self):
         import random
+        # 使用当前用户的id来生成会员号
         return f"M{self.id:08d}{random.randint(1000, 9999)}"
 
     def generate_referral_code(self):
         import random
         import string
+        # 使用用户id作为种子的一部分，确保唯一性
+        random.seed(self.id)
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 

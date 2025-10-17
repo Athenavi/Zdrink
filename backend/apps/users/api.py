@@ -245,7 +245,7 @@ def signin_earn_points(request):
             is_active=True
         )
 
-        points = rule.config.get('points', 10)  # 默认10积分
+        points = rule.config.get('points', 10)  # 默认拥有10个积分
 
         points_service = PointsService(request.user, request.tenant)
         points_service.earn_points(
