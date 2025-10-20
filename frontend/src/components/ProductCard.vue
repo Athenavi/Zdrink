@@ -145,6 +145,7 @@ const handleQuantityChange = (value) => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/variables.scss' as *;
 .product-card {
   background: white;
   border-radius: $border-radius-lg;

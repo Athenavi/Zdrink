@@ -1,16 +1,16 @@
 <template>
   <div class="menu-page">
-    <app-header :title="shopInfo.name" :show-cart="true" />
+    <app-header :show-cart="true" :title="shopInfo.name"/>
 
     <div class="menu-container">
       <!-- 侧边分类导航 -->
       <div class="category-sidebar">
         <van-sidebar v-model="activeCategory">
           <van-sidebar-item
-            v-for="category in categories"
-            :key="category.id"
-            :title="category.name"
-            @click="scrollToCategory(category.id)"
+              v-for="category in categories"
+              :key="category.id"
+              :title="category.name"
+              @click="scrollToCategory(category.id)"
           />
         </van-sidebar>
       </div>
@@ -18,21 +18,21 @@
       <!-- 商品列表 -->
       <div class="product-list">
         <div
-          v-for="category in categories"
-          :key="category.id"
-          :id="`category-${category.id}`"
-          class="category-section"
+            v-for="category in categories"
+            :id="`category-${category.id}`"
+            :key="category.id"
+            class="category-section"
         >
           <h3 class="category-title">{{ category.name }}</h3>
 
           <div class="products-grid">
             <product-card
-              v-for="product in category.products"
-              :key="product.id"
-              :product="product"
-              :show-desc="true"
-              :show-stepper="true"
-              @click="goToProduct(product.id)"
+                v-for="product in category.products"
+                :key="product.id"
+                :product="product"
+                :show-desc="true"
+                :show-stepper="true"
+                @click="goToProduct(product.id)"
             />
           </div>
         </div>
@@ -40,9 +40,9 @@
     </div>
 
     <!-- 购物车底部栏 -->
-    <div class="cart-bar" v-if="cartStore.totalQuantity > 0">
+    <div v-if="cartStore.totalQuantity > 0" class="cart-bar">
       <van-badge :content="cartStore.totalQuantity" class="cart-badge">
-        <van-icon name="shopping-cart-o" size="24" />
+        <van-icon name="shopping-cart-o" size="24"/>
       </van-badge>
 
       <div class="cart-info">
@@ -51,29 +51,29 @@
       </div>
 
       <van-button
-        type="primary"
-        round
-        class="checkout-btn"
-        @click="goToCart"
+          class="checkout-btn"
+          round
+          type="primary"
+          @click="goToCart"
       >
         去结算
       </van-button>
     </div>
 
-    <loading :loading="loading" text="加载中..." />
+    <loading :loading="loading" text="加载中..."/>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useCartStore } from '../stores/cart'
-import { shopApi } from '../api/shop'
-import { productApi } from '../api/product'
+import {ref, onMounted, computed} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {useCartStore} from '../stores/cart'
+import {shopApi} from '../api/shop'
+import {productApi} from '../api/product'
 import AppHeader from '../components/AppHeader.vue'
 import ProductCard from '../components/ProductCard.vue'
 import Loading from '../components/Loading.vue'
-import { formatPrice } from '../utils'
+import {formatPrice} from '../utils'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,7 +124,7 @@ const loadCategories = async () => {
 const scrollToCategory = (categoryId) => {
   const element = document.getElementById(`category-${categoryId}`)
   if (element) {
-    element.scrollIntoView({ behavior: 'smooth' })
+    element.scrollIntoView({behavior: 'smooth'})
   }
 }
 
@@ -137,9 +137,10 @@ const goToCart = () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '../styles/variables' as *;
 @use "sass:color";
+
 .menu-page {
   padding-bottom: 60px;
 
@@ -154,11 +155,11 @@ const goToCart = () => {
 
       :deep(.van-sidebar-item) {
         padding: 16px 8px;
+      }
 
-        &--select {
-          color: $primary-color;
-          background: lighten($primary-color, 40%);
-        }
+      :deep(.van-sidebar-item--select) {
+        color: $primary-color;
+        background: color.adjust($primary-color, $lightness: 40%);
       }
     }
 

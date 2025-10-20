@@ -25,7 +25,7 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
             'fields': ('delivery_fee', 'minimum_order_amount', 'delivery_radius')
         }),
         ('多租户设置', {
-            'fields': ('schema_name', 'domain_url')
+            'fields': ('schema_name',)
         }),
     )
 
