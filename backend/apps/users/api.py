@@ -20,6 +20,7 @@ from ..core.permissions import IsShopOwnerOrStaff
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # 禁用认证，包括 CSRF
 
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
@@ -37,6 +38,7 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # 禁用认证，包括 CSRF
 
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
@@ -98,6 +100,7 @@ class ChangePasswordView(APIView):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def get_current_user(request):
+    """获取当前用户信息（公共接口，不需要租户上下文）"""
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
 

@@ -59,8 +59,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { showSuccessToast } from 'vant'
+import {showSuccessToast, showToast} from 'vant'
+import {useRouter} from 'vue-router'
 import { useCartStore } from '../stores/cart'
+import {useUserStore} from '../stores/user'
 import { formatPrice, getImageUrl } from '../utils'
 
 const props = defineProps({
@@ -88,7 +90,9 @@ const props = defineProps({
 
 const emit = defineEmits(['click', 'add-to-cart'])
 
+const router = useRouter()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 const quantity = ref(0)
 
 // 计算显示价格
@@ -126,6 +130,28 @@ const handleClick = () => {
 }
 
 const handleAddToCart = async () => {
+  console.log('检查登录状态:', {
+    isLoggedIn: userStore.isLoggedIn,
+    token: userStore.token ? '存在' : '不存在',
+    userInfo: userStore.userInfo
+  })
+
+  // 检查是否登录（增加重试机制）
+  if (!userStore.isLoggedIn) {
+    // 如果 token 存在但 isLoggedIn 为 false，等待一下再检查
+    if (localStorage.getItem('token')) {
+      console.log('检测到 token 存在，等待初始化...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+      console.log('重新检查登录状态:', userStore.isLoggedIn)
+    }
+
+    if (!userStore.isLoggedIn) {
+      showToast('请先登录')
+      router.push('/login')
+      return
+    }
+  }
+
   try {
     await cartStore.addToCart({
       product_id: props.product.id,
@@ -135,6 +161,11 @@ const handleAddToCart = async () => {
     emit('add-to-cart', props.product)
   } catch (error) {
     console.error('添加到购物车失败:', error)
+    // 如果是 401 或 403 错误，跳转到登录页
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      showToast('请先登录')
+      router.push('/login')
+    }
   }
 }
 

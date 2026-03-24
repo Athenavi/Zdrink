@@ -65,9 +65,11 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed} from 'vue'
+import {ref, onMounted, computed, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
+import {showToast} from 'vant'
 import {useCartStore} from '../stores/cart'
+import {useUserStore} from '../stores/user'
 import {shopApi} from '../api/shop'
 import {productApi} from '../api/product'
 import AppHeader from '../components/AppHeader.vue'
@@ -78,6 +80,7 @@ import {formatPrice} from '../utils'
 const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 
 const shopId = ref(route.params.shopId)
 const loading = ref(false)
@@ -85,10 +88,30 @@ const activeCategory = ref(0)
 const shopInfo = ref({})
 const categories = ref([])
 
+const loadCart = async () => {
+  if (userStore.isLoggedIn) {
+    try {
+      await cartStore.getCart()
+      console.log('购物车加载成功')
+    } catch (error) {
+      console.log('加载购物车失败:', error)
+    }
+  }
+}
+
 onMounted(async () => {
   await loadShopInfo()
   await loadCategories()
-  await cartStore.getCart()
+  // 立即尝试加载购物车
+  await loadCart()
+})
+
+// 监听登录状态变化
+watch(() => userStore.isLoggedIn, (newVal) => {
+  console.log('登录状态变化:', newVal)
+  if (newVal) {
+    loadCart()
+  }
 })
 
 const loadShopInfo = async () => {

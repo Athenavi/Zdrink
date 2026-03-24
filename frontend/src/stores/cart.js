@@ -24,6 +24,10 @@ export const useCartStore = defineStore('cart', () => {
       cartItems.value = response.data.items || []
       return response
     } catch (error) {
+        // 如果是 401 或 403，说明未登录，不清空数据
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            console.log('用户未登录，无法获取购物车')
+        }
       throw error
     }
   }

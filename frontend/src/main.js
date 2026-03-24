@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import {useUserStore} from './stores/user'
 import 'vant/lib/index.css'
 import './styles/variables.scss'
 import './styles/global.scss'
@@ -13,5 +14,11 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+
+// 初始化用户信息（如果有 token）
+const userStore = useUserStore()
+userStore.initUser().then(() => {
+  console.log('用户初始化完成:', userStore.isLoggedIn ? '已登录' : '未登录')
+})
 
 app.mount('#app')

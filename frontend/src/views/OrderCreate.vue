@@ -133,8 +133,11 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { orderApi } from '@/api/order'
+import {cartApi} from '@/api/cart'
+import {useCartStore} from '@/stores/cart'
 
 const router = useRouter()
+const cartStore = useCartStore()
 const loading = ref(false)
 const orderFormRef = ref()
 
@@ -199,29 +202,30 @@ const deliveryFee = computed(() => {
 // 获取购物车数据
 const fetchCartData = async () => {
   try {
-    // 这里应该调用获取购物车商品的API
-    // 暂时使用模拟数据
-    cartItems.value = [
-      {
-        id: 1,
-        product_name: '珍珠奶茶',
-        product_image: 'https://via.placeholder.com/80',
-        sku_name: '大杯/少糖',
-        price: 18.00,
-        quantity: 2
-      },
-      {
-        id: 2,
-        product_name: '拿铁咖啡',
-        product_image: 'https://via.placeholder.com/80',
-        sku_name: '中杯/热',
-        price: 25.00,
-        quantity: 1
-      }
-    ]
+    // 从 store 中获取购物车数据（已经在其他页面加载过）
+    if (cartStore.cartItems.length === 0) {
+      // 如果 store 中没有，则从 API 获取
+      await cartStore.getCart()
+    }
 
-    // 设置购物车ID（实际应该从购物车API获取）
-    orderForm.value.cart_id = 1
+    // 使用 store 中的购物车数据
+    cartItems.value = cartStore.cartItems.map(item => ({
+      id: item.id,
+      product_name: item.product_name,
+      product_image: item.product_image,
+      sku_name: item.sku_info ? `${item.sku_id}` : '',
+      price: parseFloat(item.unit_price),
+      quantity: item.quantity,
+      product_id: item.product,
+      sku_id: item.sku,
+      customization: item.customization || '',
+      attribute_option_ids: item.attribute_options || []
+    }))
+
+    // 设置购物车 ID
+    orderForm.value.cart_id = cartStore.cartInfo?.id || null
+
+    console.log('购物车数据:', cartItems.value)
   } catch (error) {
     console.error('获取购物车数据失败:', error)
     ElMessage.error('获取购物车数据失败')
@@ -238,14 +242,26 @@ const handleCreateOrder = async () => {
 
     // 准备订单数据
     const orderData = {
-      ...orderForm.value,
-      pickup_time: orderForm.value.pickup_time.toISOString()
+      order_type: orderForm.value.order_type,
+      customer_name: orderForm.value.customer_name,
+      customer_phone: orderForm.value.customer_phone,
+      cart_id: orderForm.value.cart_id
     }
 
-    // 调用创建订单API
+    // 如果是外卖订单，添加取餐时间
+    if (orderForm.value.order_type === 'takeaway') {
+      orderData.pickup_time = orderForm.value.pickup_time.toISOString()
+    }
+
+    console.log('提交订单数据:', orderData)
+
+    // 调用创建订单 API
     const response = await orderApi.createOrder(orderData)
 
     ElMessage.success('订单创建成功！')
+
+    // 清空购物车
+    await cartStore.clearCart()
 
     // 跳转到订单详情页面
     router.push({

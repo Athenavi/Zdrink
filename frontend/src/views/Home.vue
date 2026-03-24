@@ -82,9 +82,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import {ref, onMounted, watch} from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
+import {useUserStore} from '../stores/user'
 import { shopApi } from '../api/shop'
 import AppHeader from '../components/AppHeader.vue'
 import Loading from '../components/Loading.vue'
@@ -92,6 +93,7 @@ import { getImageUrl } from '../utils'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 
 const activeTab = ref('home')
 const searchKeyword = ref('')
@@ -107,9 +109,29 @@ const features = ref([
   { id: 4, icon: 'question-o', text: '使用帮助', path: '/help' }
 ])
 
+const loadCart = async () => {
+  if (userStore.isLoggedIn) {
+    try {
+      await cartStore.getCart()
+      console.log('购物车加载成功')
+    } catch (error) {
+      console.log('加载购物车失败:', error)
+    }
+  }
+}
+
 onMounted(async () => {
   await loadData()
-  await cartStore.getCart()
+  // 立即尝试加载购物车
+  await loadCart()
+})
+
+// 监听登录状态变化
+watch(() => userStore.isLoggedIn, (newVal) => {
+  console.log('登录状态变化:', newVal)
+  if (newVal) {
+    loadCart()
+  }
 })
 
 const loadData = async () => {
@@ -149,7 +171,9 @@ const handleTabChange = (name) => {
     cart: '/cart',
     profile: '/profile'
   }
-  router.push(routes[name])
+  if (routes[name]) {
+    router.push(routes[name])
+  }
 }
 
 const goToShopList = () => {

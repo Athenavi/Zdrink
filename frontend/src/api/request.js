@@ -5,15 +5,21 @@ import { showFailToast } from 'vant'
 // 创建axios实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 10000,
+  withCredentials: true, // 允许携带 cookie
+  xsrfCookieName: 'csrftoken', // CSRF cookie 名称
+  xsrfHeaderName: 'X-CSRFToken' // CSRF header 名称
 })
 
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
     const userStore = useUserStore()
+    console.log('请求拦截器 - Token:', userStore.token ? '存在' : '不存在')
+    console.log('请求 URL:', config.url)
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
+      console.log('已添加 Authorization header')
     }
     return config
   },

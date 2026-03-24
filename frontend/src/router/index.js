@@ -73,6 +73,66 @@ const routes = [
     meta: { title: '个人中心' }
   },
   {
+      path: '/shops',
+      name: 'Shops',
+      component: () => import('../views/Shops.vue'),
+      meta: {title: '全部店铺'}
+  },
+    {
+        path: '/categories',
+        name: 'Categories',
+        component: () => import('../views/Categories.vue'),
+        meta: {title: '全部分类'}
+    },
+    {
+        path: '/search',
+        name: 'Search',
+        component: () => import('../views/Search.vue'),
+        meta: {title: '搜索'}
+    },
+    {
+        path: '/coupons',
+        name: 'Coupons',
+        component: () => import('../views/Coupons.vue'),
+        meta: {title: '优惠券'}
+    },
+    {
+        path: '/points',
+        name: 'PointsCenter',
+        component: () => import('../views/PointsCenter.vue'),
+        meta: {title: '积分中心'}
+    },
+    {
+        path: '/help',
+        name: 'Help',
+        component: () => import('../views/Help.vue'),
+        meta: {title: '帮助中心'}
+    },
+    {
+        path: '/address',
+        name: 'AddressList',
+        component: () => import('../views/AddressList.vue'),
+        meta: {title: '收货地址'}
+    },
+    {
+        path: '/address/edit',
+        name: 'AddressEdit',
+        component: () => import('../views/AddressEdit.vue'),
+        meta: {title: '编辑地址'}
+    },
+    {
+        path: '/favorites',
+        name: 'Favorites',
+        component: () => import('../views/Favorites.vue'),
+        meta: {title: '我的收藏'}
+    },
+    {
+        path: '/products',
+        name: 'Products',
+        component: () => import('../views/Home.vue'), // 可以复用或创建专门的商品列表页
+        meta: {title: '商品列表'}
+    },
+    {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue'),

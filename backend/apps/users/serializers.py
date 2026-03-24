@@ -14,7 +14,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         fields = ('username', 'password', 'password2', 'email', 'phone', 'user_type')
         extra_kwargs = {
             'email': {'required': True},
-            'phone': {'required': True}
+            'phone': {'required': False},  # 改为非必填
+            'user_type': {'required': False, 'default': 'customer'}  # 设置默认值
         }
 
     def validate(self, attrs):

@@ -25,6 +25,8 @@ class CartViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        print(f'[DEBUG] CartViewSet.get_queryset - User: {self.request.user}')
+        print(f'[DEBUG] CartViewSet.get_queryset - User is authenticated: {self.request.user.is_authenticated}')
         return Cart.objects.filter(user=self.request.user).prefetch_related('items')
 
     def get_serializer_class(self):
@@ -35,6 +37,10 @@ class CartViewSet(ModelViewSet):
     @action(detail=False, methods=['post'])
     def add_item(self, request):
         """添加商品到购物车"""
+        print(f'[DEBUG] CartViewSet.add_item - User: {request.user}')
+        print(f'[DEBUG] CartViewSet.add_item - User is authenticated: {request.user.is_authenticated}')
+        print(f'[DEBUG] CartViewSet.add_item - Request data: {request.data}')
+        
         serializer = AddToCartSerializer(data=request.data)
         if serializer.is_valid():
             cart, created = Cart.objects.get_or_create(user=request.user)
@@ -89,6 +95,26 @@ class CartViewSet(ModelViewSet):
         cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(cart)
         return Response(serializer.data)
+
+
+class CartItemViewSet(ModelViewSet):
+    """购物车商品项视图集"""
+    serializer_class = CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        print(f'[DEBUG] CartItemViewSet.get_queryset - User: {self.request.user}')
+        # 只返回当前用户的购物车商品项
+        return CartItem.objects.filter(cart__user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        print(f'[DEBUG] CartItemViewSet.update - User: {request.user}')
+        print(f'[DEBUG] CartItemViewSet.update - Data: {request.data}')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        print(f'[DEBUG] CartItemViewSet.destroy - User: {self.request.user}')
+        return super().destroy(request, *args, **kwargs)
 
 
 class OrderViewSet(ModelViewSet):

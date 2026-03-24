@@ -141,7 +141,27 @@ const handleRegister = async () => {
     router.push('/home')
   } catch (error) {
     console.error('注册失败:', error)
-    const errorMsg = error.response?.data?.message || error.response?.data?.detail || '注册失败'
+    console.error('错误详情:', error.response?.data)
+
+    // 显示详细的错误信息
+    let errorMsg = '注册失败'
+    if (error.response?.data) {
+      const data = error.response.data
+      // 处理字段验证错误
+      if (typeof data === 'object') {
+        const messages = []
+        for (const [field, errors] of Object.entries(data)) {
+          if (Array.isArray(errors)) {
+            messages.push(`${field}: ${errors.join(', ')}`)
+          } else {
+            messages.push(`${field}: ${errors}`)
+          }
+        }
+        errorMsg = messages.join('; ')
+      } else if (data.message || data.detail) {
+        errorMsg = data.message || data.detail
+      }
+    }
     showFailToast(errorMsg)
   } finally {
     loading.value = false

@@ -31,14 +31,23 @@ class CartItemSerializer(serializers.ModelSerializer):
         return None
 
     def validate(self, data):
+        # 如果是部分更新（PATCH），只验证提供的字段
+        if self.partial:
+            # 更新数量时，只需要验证数量
+            quantity = data.get('quantity')
+            if quantity is not None and quantity < 1:
+                raise serializers.ValidationError("数量必须大于 0")
+            return data
+
+        # 完整更新（PUT）或创建时才进行完整验证
         product = data.get('product')
         sku = data.get('sku')
         quantity = data.get('quantity', 1)
 
-        # 验证SKU属于该商品
+        # 验证 SKU 属于该商品
         if sku and sku.product != product:
-            raise serializers.ValidationError("SKU不属于该商品")
-
+            raise serializers.ValidationError("SKU 不属于该商品")
+    
         # 验证库存
         if sku and sku.stock_quantity < quantity:
             raise serializers.ValidationError("库存不足")

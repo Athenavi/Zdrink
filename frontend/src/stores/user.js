@@ -11,13 +11,27 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   const login = async (credentials) => {
     try {
+        console.log('开始登录...')
       const response = await userApi.login(credentials)
+        console.log('登录响应:', response.data)
+      
       token.value = response.data.access
       localStorage.setItem('token', response.data.access)
       localStorage.setItem('refresh_token', response.data.refresh)
-      await getCurrentUser()
+
+        console.log('Token 已保存:', response.data.access.substring(0, 20) + '...')
+
+        // 获取用户信息
+        try {
+            await getCurrentUser()
+        } catch (error) {
+            console.error('获取用户信息失败:', error)
+            // 如果获取用户信息失败，但 token 已经设置，仍然认为登录成功
+        }
+      
       return response
     } catch (error) {
+        console.error('登录失败:', error.response?.data)
       throw error
     }
   }
@@ -67,10 +81,19 @@ export const useUserStore = defineStore('user', () => {
   const initUser = async () => {
     if (token.value) {
       try {
+          console.log('开始初始化用户信息...')
         await getCurrentUser()
+          console.log('用户初始化成功:', userInfo.value?.username)
       } catch (error) {
-        console.error('初始化用户信息失败:', error)
+          console.error('初始化用户信息失败:', error.message)
+          // 只有当 token 无效时才清除它
+          if (error.response?.status === 401) {
+              console.log('Token 已失效，清除本地存储')
+              logout()
+          }
       }
+    } else {
+        console.log('未检测到 token，跳过初始化')
     }
   }
 
