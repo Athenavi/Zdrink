@@ -139,6 +139,30 @@ const routes = [
         meta: {title: '商品列表'}
     },
     {
+        path: '/pos/checkout',
+        name: 'POSCheckout',
+        component: () => import('../views/POSCheckout.vue'),
+        meta: {title: 'POS 收银台'}
+    },
+    {
+        path: '/tables',
+        name: 'TablesList',
+        component: () => import('../views/TablesList.vue'),
+        meta: {title: '桌台管理'}
+    },
+    {
+        path: '/printing/queue',
+        name: 'PrintQueue',
+        component: () => import('../views/PrintQueue.vue'),
+        meta: {title: '打印队列'}
+    },
+    {
+        path: '/printing/settings',
+        name: 'PrinterSettings',
+        component: () => import('../views/PrinterSettings.vue'),
+        meta: {title: '打印机设置'}
+    },
+    {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue'),

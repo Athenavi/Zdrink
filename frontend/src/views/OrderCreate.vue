@@ -27,6 +27,34 @@
                 </el-radio-group>
               </el-form-item>
 
+              <el-form-item
+                  v-if="orderForm.order_type === 'dine_in'"
+                  label="桌台号"
+                  prop="table_number"
+              >
+                <el-select
+                    v-model="orderForm.table_number"
+                    filterable
+                    placeholder="选择桌台"
+                    style="width: 100%"
+                >
+                  <el-option
+                      v-for="table in availableTables"
+                      :key="table.id"
+                      :disabled="table.status !== 'available'"
+                      :label="`${table.table_number} - ${table.table_name} (${table.status_text})`"
+                      :value="table.table_number"
+                  >
+                    <span style="float: left">{{ table.table_number }} - {{ table.table_name }}</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px">
+                      <el-tag :type="getTableStatusType(table.status)" size="small">
+                        {{ table.status_text }}
+                      </el-tag>
+                    </span>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+
               <el-form-item label="支付方式" prop="payment_method">
                 <el-radio-group v-model="orderForm.payment_method">
                   <el-radio label="wechat">微信支付</el-radio>
@@ -137,11 +165,12 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {useRouter} from 'vue-router'
 import {orderApi} from '@/api/order'
 import {useCartStore} from '@/stores/cart'
+import {posApi} from '@/api/pos'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -151,12 +180,16 @@ const orderFormRef = ref()
 // 订单表单数据
 const orderForm = ref({
   order_type: 'takeaway',
+  table_number: '',
   customer_name: '',
   customer_phone: '',
   pickup_time: new Date(Date.now() + 30 * 60 * 1000), // 默认 30 分钟后
   payment_method: 'wechat', // 默认微信支付
   cart_id: null
 })
+
+// 可用桌台列表
+const availableTables = ref([])
 
 // 购物车商品列表
 const cartItems = ref([])
@@ -186,18 +219,36 @@ const disabledDate = (time) => {
 
 const shortcuts = [
   {
-    text: '30分钟后',
+    text: '30 分钟后',
     value: new Date(Date.now() + 30 * 60 * 1000)
   },
   {
-    text: '1小时后',
+    text: '1 小时后',
     value: new Date(Date.now() + 60 * 60 * 1000)
   },
   {
-    text: '2小时后',
+    text: '2 小时后',
     value: new Date(Date.now() + 2 * 60 * 60 * 1000)
   }
 ]
+
+// 获取桌台状态类型
+const getTableStatusType = (status) => {
+  const typeMap = {
+    available: 'success',
+    occupied: 'danger',
+    reserved: 'warning',
+    cleaning: 'info'
+  }
+  return typeMap[status] || 'info'
+}
+
+// 监听订单类型变化
+watch(() => orderForm.value.order_type, (newType) => {
+  if (newType === 'dine_in') {
+    loadAvailableTables()
+  }
+})
 
 // 计算属性
 const totalAmount = computed(() => {
@@ -248,9 +299,25 @@ const fetchCartData = async () => {
         router.push('/cart')
       }, 2000)
     }
+
+    // 加载可用桌台
+    if (orderForm.value.order_type === 'dine_in') {
+      await loadAvailableTables()
+    }
   } catch (error) {
     console.error('获取购物车数据失败:', error)
     ElMessage.error('获取购物车数据失败')
+  }
+}
+
+// 加载可用桌台
+const loadAvailableTables = async () => {
+  try {
+    const response = await posApi.getAvailableTables()
+    availableTables.value = response.data || []
+  } catch (error) {
+    console.error('加载桌台失败:', error)
+    ElMessage.error('加载桌台失败')
   }
 }
 
@@ -293,6 +360,11 @@ const handleCreateOrder = async () => {
       customer_phone: orderForm.value.customer_phone,
       payment_method: orderForm.value.payment_method,
       cart_id: orderForm.value.cart_id
+    }
+
+    // 如果是堂食订单，添加桌台号
+    if (orderForm.value.order_type === 'dine_in') {
+      orderData.table_number = orderForm.value.table_number
     }
 
     // 如果是外卖订单，添加取餐时间

@@ -3,6 +3,21 @@
     <app-header title="购物车" />
 
     <div class="cart-container" v-if="cartStore.cartItems.length > 0">
+      <!-- 用餐方式选择 -->
+      <div class="order-type-section">
+        <van-cell-group inset>
+          <van-cell title="选择用餐方式">
+            <template #default>
+              <van-radio-group v-model="orderType" direction="horizontal">
+                <van-radio name="dine_in">堂食</van-radio>
+                <van-radio name="takeaway">外带</van-radio>
+                <van-radio name="delivery">外卖</van-radio>
+              </van-radio-group>
+            </template>
+          </van-cell>
+        </van-cell-group>
+      </div>
+
       <!-- 购物车商品列表 -->
       <div class="cart-items">
         <div
@@ -86,18 +101,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { showConfirmDialog, showSuccessToast } from 'vant'
-import { useCartStore } from '../stores/cart'
+import {computed, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {showConfirmDialog, showSuccessToast} from 'vant'
+import {useCartStore} from '../stores/cart'
 import AppHeader from '../components/AppHeader.vue'
 import Loading from '../components/Loading.vue'
-import { formatPrice, getImageUrl } from '../utils'
+import {formatPrice, getImageUrl} from '../utils'
 
 const router = useRouter()
 const cartStore = useCartStore()
 
 const loading = ref(false)
+const orderType = ref('dine_in') // 默认堂食
 
 onMounted(async () => {
   await cartStore.getCart()
@@ -133,7 +149,10 @@ const selectAll = computed({
 
 // 配送费（这里可以根据业务逻辑调整）
 const deliveryFee = computed(() => {
-  return 5.00 // 固定配送费
+  if (orderType.value === 'delivery') {
+    return 5.00 // 外卖配送费
+  }
+  return 0.00 // 堂食和外带免配送费
 })
 
 const handleSelectAll = (checked) => {
@@ -177,7 +196,10 @@ const goToCheckout = () => {
     quantity: item.quantity
   }))
 
+  // 存储用餐方式
   localStorage.setItem('selectedCartItems', JSON.stringify(selectedCartItems))
+  localStorage.setItem('orderType', orderType.value)
+  
   router.push('/order/create')
 }
 
@@ -197,6 +219,10 @@ const getSkuSpecText = (sku) => {
 @use "sass:color";
 .cart-page {
   padding-bottom: 80px;
+
+  .order-type-section {
+    margin: 10px;
+  }
 
   .cart-container {
     .cart-items {

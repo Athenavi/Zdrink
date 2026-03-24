@@ -118,7 +118,12 @@ class OrderListSerializer(serializers.ModelSerializer):
         ]
 
     def get_items_count(self, obj):
-        return obj.items.count()
+        try:
+            if hasattr(obj, 'items_count') and obj.items_count is not None:
+                return obj.items_count
+            return obj.items.count()
+        except Exception:
+            return 0
 
     def get_customer_info(self, obj):
         return {

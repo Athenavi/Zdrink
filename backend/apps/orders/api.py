@@ -175,6 +175,10 @@ class OrderViewSet(ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_orders(self, request):
         """获取当前用户的订单"""
+        print(f'[DEBUG] my_orders - User: {request.user}')
+        print(f'[DEBUG] my_orders - User type: {getattr(request.user, "user_type", None)}')
+        print(f'[DEBUG] my_orders - Request params: {request.query_params}')
+            
         # 直接使用 get_queryset()，因为它已经根据用户类型过滤了
         orders = self.get_queryset()
 
@@ -182,6 +186,14 @@ class OrderViewSet(ModelViewSet):
         if getattr(request.user, 'user_type', None) == 'customer':
             orders = orders.filter(user=request.user)
 
+        # 获取状态过滤参数
+        status = request.query_params.get('status', None)
+        if status:
+            print(f'[DEBUG] Filtering by status: {status}')
+            orders = orders.filter(status=status)
+
+        print(f'[DEBUG] my_orders - Total orders: {orders.count()}')
+            
         # 应用分页
         page = self.paginate_queryset(orders)
 
