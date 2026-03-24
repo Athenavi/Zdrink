@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from apps.core.admin_utils import TenantAdminMixin
 from .models import Cart, CartItem, Order, OrderItem, OrderStatusLog, OrderPayment
 
 
@@ -11,7 +12,7 @@ class CartItemInline(admin.TabularInline):
 
 
 @admin.register(Cart)
-class CartAdmin(admin.ModelAdmin):
+class CartAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ['id', 'user', 'total_price', 'total_quantity', 'created_at']
     list_filter = ['created_at']
     inlines = [CartItemInline]
@@ -31,7 +32,7 @@ class OrderStatusLogInline(admin.TabularInline):
 
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = [
         'order_number', 'customer_name', 'customer_phone', 'status',
         'order_type', 'total_amount', 'created_at', 'order_actions'  # 修改这里
@@ -72,7 +73,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 
 @admin.register(OrderPayment)
-class OrderPaymentAdmin(admin.ModelAdmin):
+class OrderPaymentAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ['order', 'payment_method', 'payment_status', 'amount', 'created_at']
     list_filter = ['payment_method', 'payment_status', 'created_at']
     search_fields = ['order__order_number', 'transaction_id']

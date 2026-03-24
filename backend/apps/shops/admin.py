@@ -1,7 +1,18 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django_tenants.admin import TenantAdminMixin
 
 from .models import Shop, Domain, ShopStaff, ShopSettings
+
+User = get_user_model()
+
+
+class ShopStaffInline(admin.TabularInline):
+    """店铺员工内联管理"""
+    model = ShopStaff
+    extra = 0
+    raw_id_fields = ('user',)
+    fields = ('user', 'role', 'is_active', 'permissions')
 
 
 @admin.register(Shop)
@@ -10,6 +21,7 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_filter = ('shop_type', 'is_active', 'created_at')
     search_fields = ('name', 'address', 'phone')
     filter_horizontal = ()
+    inlines = [ShopStaffInline]
 
     fieldsets = (
         ('基础信息', {
@@ -28,6 +40,38 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
             'fields': ('schema_name',)
         }),
     )
+
+    def has_view_permission(self, request, obj=None):
+        """控制查看权限"""
+        if request.user.is_superuser:
+            return True
+        # 租户管理员可以查看自己管理的店铺
+        if hasattr(request, 'tenant'):
+            return ShopStaff.objects.filter(
+                user=request.user,
+                shop=request.tenant,
+                is_active=True,
+                role__in=['owner', 'manager']
+            ).exists()
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """控制编辑权限"""
+        if request.user.is_superuser:
+            return True
+        # 只有店主和店长可以编辑
+        if hasattr(request, 'tenant'):
+            return ShopStaff.objects.filter(
+                user=request.user,
+                shop=request.tenant,
+                is_active=True,
+                role__in=['owner', 'manager']
+            ).exists()
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """控制删除权限 - 只有超级管理员可以删除"""
+        return request.user.is_superuser
 
 
 from .models import Table
@@ -50,5 +94,17 @@ class TableAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Domain)
-admin.site.register(ShopStaff)
-admin.site.register(ShopSettings)
+
+
+@admin.register(ShopStaff)
+class ShopStaffAdmin(TenantAdminMixin, admin.ModelAdmin):
+    list_display = ('user', 'shop', 'role', 'is_active', 'created_at')
+    list_filter = ('role', 'is_active', 'shop')
+    search_fields = ('user__username', 'user__email', 'shop__name')
+    raw_id_fields = ('user', 'shop')
+
+
+@admin.register(ShopSettings)
+class ShopSettingsAdmin(TenantAdminMixin, admin.ModelAdmin):
+    list_display = ('shop', 'auto_confirm_order', 'points_enabled', 'updated_at')
+    search_fields = ('shop__name',)

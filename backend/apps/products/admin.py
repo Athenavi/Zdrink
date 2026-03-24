@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from apps.core.admin_utils import TenantAdminMixin
 from .models import (
     Category, Product, Specification, SpecificationValue,
     ProductSKU, ProductAttribute, ProductAttributeOption,
@@ -8,7 +9,7 @@ from .models import (
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('name', 'parent', 'sort_order', 'is_active', 'products_count')
     list_filter = ('is_active', 'shop')
     search_fields = ('name',)
@@ -31,7 +32,7 @@ class ProductAttributeOptionInline(admin.TabularInline):
 
 
 @admin.register(ProductAttribute)
-class ProductAttributeAdmin(admin.ModelAdmin):
+class ProductAttributeAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('name', 'product', 'attribute_type', 'is_required', 'sort_order')
     list_filter = ('attribute_type', 'is_required')
     inlines = [ProductAttributeOptionInline]
@@ -45,7 +46,7 @@ class ProductSKUInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('name', 'category', 'base_price', 'status', 'is_featured', 'created_at')
     list_filter = ('status', 'is_featured', 'category', 'shop')
     search_fields = ('name', 'description')
@@ -66,7 +67,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProductSKU)
-class ProductSKUAdmin(admin.ModelAdmin):
+class ProductSKUAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('sku_code', 'product', 'price', 'stock_quantity', 'is_in_stock', 'is_low_stock')
     list_filter = ('is_active', 'product__shop')
     search_fields = ('sku_code', 'product__name')
@@ -86,21 +87,21 @@ class ProductSKUAdmin(admin.ModelAdmin):
 
 
 @admin.register(Specification)
-class SpecificationAdmin(admin.ModelAdmin):
+class SpecificationAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('name', 'display_name', 'shop', 'sort_order')
     list_filter = ('shop',)
     search_fields = ('name', 'display_name')
 
 
 @admin.register(SpecificationValue)
-class SpecificationValueAdmin(admin.ModelAdmin):
+class SpecificationValueAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('specification', 'value', 'display_value', 'sort_order')
     list_filter = ('specification',)
     search_fields = ('value', 'display_value')
 
 
 @admin.register(InventoryLog)
-class InventoryLogAdmin(admin.ModelAdmin):
+class InventoryLogAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('sku', 'action', 'quantity_change', 'current_quantity', 'created_at')
     list_filter = ('action', 'created_at')
     search_fields = ('sku__product__name', 'reference_id')
