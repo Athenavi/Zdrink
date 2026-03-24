@@ -27,6 +27,14 @@
                 </el-radio-group>
               </el-form-item>
 
+              <el-form-item label="支付方式" prop="payment_method">
+                <el-radio-group v-model="orderForm.payment_method">
+                  <el-radio label="wechat">微信支付</el-radio>
+                  <el-radio label="alipay">支付宝</el-radio>
+                  <el-radio label="cash">现金支付</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
               <el-form-item label="顾客姓名" prop="customer_name">
                 <el-input
                   v-model="orderForm.customer_name"
@@ -129,11 +137,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
-import { orderApi } from '@/api/order'
-import {cartApi} from '@/api/cart'
+import {computed, onMounted, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {useRouter} from 'vue-router'
+import {orderApi} from '@/api/order'
 import {useCartStore} from '@/stores/cart'
 
 const router = useRouter()
@@ -146,7 +153,8 @@ const orderForm = ref({
   order_type: 'takeaway',
   customer_name: '',
   customer_phone: '',
-  pickup_time: new Date(Date.now() + 30 * 60 * 1000), // 默认30分钟后
+  pickup_time: new Date(Date.now() + 30 * 60 * 1000), // 默认 30 分钟后
+  payment_method: 'wechat', // 默认微信支付
   cart_id: null
 })
 
@@ -165,6 +173,9 @@ const rules = {
   ],
   pickup_time: [
     { required: true, message: '请选择取餐时间', trigger: 'change' }
+  ],
+  payment_method: [
+    {required: true, message: '请选择支付方式', trigger: 'change'}
   ]
 }
 
@@ -226,6 +237,17 @@ const fetchCartData = async () => {
     orderForm.value.cart_id = cartStore.cartInfo?.id || null
 
     console.log('购物车数据:', cartItems.value)
+    console.log('购物车 ID:', orderForm.value.cart_id)
+    console.log('购物车商品数量:', cartItems.value.length)
+
+    // 检查购物车是否为空
+    if (cartItems.value.length === 0) {
+      ElMessage.warning('购物车为空，请先添加商品')
+      // 延迟跳转到购物车页面
+      setTimeout(() => {
+        router.push('/cart')
+      }, 2000)
+    }
   } catch (error) {
     console.error('获取购物车数据失败:', error)
     ElMessage.error('获取购物车数据失败')
@@ -234,9 +256,33 @@ const fetchCartData = async () => {
 
 // 创建订单
 const handleCreateOrder = async () => {
+  console.log('开始创建订单...')
+  console.log('表单数据:', orderForm.value)
+  console.log('购物车 ID:', orderForm.value.cart_id)
+  console.log('购物车商品:', cartItems.value)
+  
   try {
-    // 表单验证
-    await orderFormRef.value.validate()
+    // 手动验证表单数据
+    if (!orderForm.value.customer_name || orderForm.value.customer_name.trim() === '') {
+      ElMessage.error('请输入顾客姓名')
+      return
+    }
+
+    if (!orderForm.value.customer_phone || !/^1[3-9]\d{9}$/.test(orderForm.value.customer_phone)) {
+      ElMessage.error('请输入正确的联系电话')
+      return
+    }
+
+    if (orderForm.value.order_type === 'takeaway' && !orderForm.value.pickup_time) {
+      ElMessage.error('请选择取餐时间')
+      return
+    }
+
+    // 检查购物车是否为空
+    if (!orderForm.value.cart_id || cartItems.value.length === 0) {
+      ElMessage.error('购物车为空')
+      return
+    }
 
     loading.value = true
 
@@ -245,6 +291,7 @@ const handleCreateOrder = async () => {
       order_type: orderForm.value.order_type,
       customer_name: orderForm.value.customer_name,
       customer_phone: orderForm.value.customer_phone,
+      payment_method: orderForm.value.payment_method,
       cart_id: orderForm.value.cart_id
     }
 
@@ -257,22 +304,34 @@ const handleCreateOrder = async () => {
 
     // 调用创建订单 API
     const response = await orderApi.createOrder(orderData)
+    console.log('订单创建成功:', response.data)
 
     ElMessage.success('订单创建成功！')
 
     // 清空购物车
     await cartStore.clearCart()
 
-    // 跳转到订单详情页面
-    router.push({
-      name: 'OrderDetail',
-      params: { id: response.data.id }
-    })
+    // 根据支付方式决定是否跳转到支付页面
+    if (['wechat', 'alipay'].includes(orderForm.value.payment_method)) {
+      // 在线支付，跳转到支付页面
+      router.push({
+        name: 'OrderPayment',
+        params: {id: response.data.id},
+        query: {method: orderForm.value.payment_method}
+      })
+    } else {
+      // 现金支付，直接跳转到订单详情
+      router.push({
+        name: 'OrderDetail',
+        params: {id: response.data.id}
+      })
+    }
 
   } catch (error) {
     console.error('创建订单失败:', error)
+    console.error('错误响应:', error.response?.data)
     if (error.response?.data) {
-      ElMessage.error(error.response.data.message || '创建订单失败')
+      ElMessage.error(error.response.data.message || JSON.stringify(error.response.data))
     } else {
       ElMessage.error('创建订单失败，请重试')
     }

@@ -82,10 +82,10 @@ class CartViewSet(ModelViewSet):
         else:
             return product.base_price
 
-    @action(detail=True, methods=['post'])
-    def clear(self, request, pk=None):
+    @action(detail=False, methods=['post'])
+    def clear(self, request):
         """清空购物车"""
-        cart = self.get_object()
+        cart, created = Cart.objects.get_or_create(user=request.user)
         cart.items.all().delete()
         return Response({'message': '购物车已清空'})
 
@@ -126,14 +126,25 @@ class OrderViewSet(ModelViewSet):
     filterset_fields = ['status', 'order_type', 'payment_status']
 
     def get_queryset(self):
-        queryset = Order.objects.filter(shop=self.request.tenant).select_related(
-            'user'
-        ).prefetch_related(
-            'items', 'status_logs', 'payments'
-        )
+        # 基础查询集
+        queryset = Order.objects.all()
 
-        # 客户只能看到自己的订单
-        if self.request.user.user_type == 'customer':
+        # 如果是店铺员工或管理员，可以看到店铺的订单
+        if hasattr(self.request, 'tenant') and self.request.tenant:
+            queryset = Order.objects.filter(shop=self.request.tenant).select_related(
+                'user'
+            ).prefetch_related(
+                'items', 'status_logs', 'payments'
+            )
+        else:
+            queryset = Order.objects.select_related(
+                'user'
+            ).prefetch_related(
+                'items', 'status_logs', 'payments'
+            )
+
+        # 客户只能看到自己的订单（使用 getattr 安全访问）
+        if getattr(self.request.user, 'user_type', None) == 'customer':
             queryset = queryset.filter(user=self.request.user)
 
         return queryset
@@ -164,7 +175,14 @@ class OrderViewSet(ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_orders(self, request):
         """获取当前用户的订单"""
-        orders = self.get_queryset().filter(user=request.user)
+        # 直接使用 get_queryset()，因为它已经根据用户类型过滤了
+        orders = self.get_queryset()
+
+        # 如果是普通用户，确保只显示自己的订单（双重保险）
+        if getattr(request.user, 'user_type', None) == 'customer':
+            orders = orders.filter(user=request.user)
+
+        # 应用分页
         page = self.paginate_queryset(orders)
 
         if page is not None:

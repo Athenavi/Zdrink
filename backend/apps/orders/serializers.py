@@ -1,9 +1,9 @@
 from decimal import Decimal
 
-from apps.products.models import Product, ProductSKU
 from django.db import transaction
 from rest_framework import serializers
 
+from apps.products.models import Product, ProductSKU
 from .models import Cart, CartItem, Order, OrderItem, OrderStatusLog, OrderPayment
 
 
@@ -170,28 +170,67 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         cart_id = validated_data.pop('cart_id', None)
         items_data = validated_data.pop('items', [])
 
+        print(f'[DEBUG] CreateOrderSerializer.create - cart_id: {cart_id}')
+        print(f'[DEBUG] CreateOrderSerializer.create - items_data: {items_data}')
+        print(f'[DEBUG] CreateOrderSerializer.create - validated_data: {validated_data}')
+
         with transaction.atomic():
-            # 创建订单
-            order = Order.objects.create(
+            # 创建订单实例（不保存到数据库）
+            order = Order(
                 shop=request.tenant,
                 user=request.user if request.user.is_authenticated else None,
                 **validated_data
             )
 
+            print(f'[DEBUG] Order instance created (not saved yet)')
+
             # 从购物车创建订单商品
             if cart_id:
                 try:
                     cart = Cart.objects.get(id=cart_id, user=request.user)
+                    print(f'[DEBUG] Found cart with {cart.items.count()} items')
+                    # 先保存订单以获取 ID，但需要先设置默认金额
+                    order.subtotal = Decimal('0.00')
+                    order.delivery_fee = Decimal('0.00')
+                    order.total_amount = Decimal('0.00')
+                    order.discount_amount = Decimal('0.00')
+                    order.save()
+                    print(f'[DEBUG] Order saved with id: {order.id}')
                     self._create_order_items_from_cart(order, cart)
+                    # 重新计算金额
+                    self._calculate_order_totals(order)
                 except Cart.DoesNotExist:
-                    pass
+                    print(f'[DEBUG] Cart not found')
+                    # 如果没有购物车商品，设置默认值
+                    order.subtotal = Decimal('0.00')
+                    order.delivery_fee = Decimal('0.00')
+                    order.total_amount = Decimal('0.00')
+                    order.discount_amount = Decimal('0.00')
+                    order.save()
+                    return order
 
             # 从直接数据创建订单商品
             if items_data:
+                # 如果需要保存订单
+                if not order.id:
+                    order.subtotal = Decimal('0.00')
+                    order.delivery_fee = Decimal('0.00')
+                    order.total_amount = Decimal('0.00')
+                    order.discount_amount = Decimal('0.00')
+                    order.save()
                 self._create_order_items_from_data(order, items_data)
+                # 重新计算金额
+                self._calculate_order_totals(order)
 
-            # 计算订单金额
-            self._calculate_order_totals(order)
+            # 如果没有执行上面的逻辑（既没有 cart 也没有 items_data），需要保存订单
+            if not order.id:
+                order.subtotal = Decimal('0.00')
+                order.delivery_fee = Decimal('0.00')
+                order.total_amount = Decimal('0.00')
+                order.discount_amount = Decimal('0.00')
+                order.save()
+
+            print(f'[DEBUG] Order totals calculated - subtotal: {order.subtotal}, total: {order.total_amount}')
 
             # 创建初始状态日志
             OrderStatusLog.objects.create(
@@ -273,17 +312,25 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         }
 
     def _calculate_order_totals(self, order):
+        # 计算商品总额
         subtotal = sum(item.total_price for item in order.items.all())
+
+        print(f'[DEBUG] _calculate_order_totals - items count: {order.items.count()}')
+        print(f'[DEBUG] _calculate_order_totals - subtotal: {subtotal}')
 
         # 计算配送费（这里可以根据业务逻辑调整）
         delivery_fee = Decimal('0.00')
         if order.order_type == 'delivery':
-            delivery_fee = order.shop.delivery_fee
+            delivery_fee = order.shop.delivery_fee if order.shop else Decimal('0.00')
+            print(f'[DEBUG] _calculate_order_totals - delivery_fee: {delivery_fee}')
 
-        order.subtotal = subtotal
+        # 设置订单金额
+        order.subtotal = subtotal or Decimal('0.00')
         order.delivery_fee = delivery_fee
-        order.total_amount = subtotal + delivery_fee - order.discount_amount
+        order.total_amount = (subtotal or Decimal('0.00')) + delivery_fee - (order.discount_amount or Decimal('0.00'))
         order.save()
+
+        print(f'[DEBUG] _calculate_order_totals - final subtotal: {order.subtotal}, total: {order.total_amount}')
 
 
 class UpdateOrderStatusSerializer(serializers.Serializer):

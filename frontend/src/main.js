@@ -1,8 +1,10 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import {createApp} from 'vue'
+import {createPinia} from 'pinia'
 import App from './App.vue'
 import router from './router'
 import {useUserStore} from './stores/user'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
 import 'vant/lib/index.css'
 import './styles/variables.scss'
 import './styles/global.scss'
@@ -13,6 +15,7 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(ElementPlus)
 app.use(router)
 
 // 初始化用户信息（如果有 token）

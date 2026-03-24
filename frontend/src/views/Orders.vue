@@ -88,7 +88,6 @@
                   立即支付
                 </el-button>
                 <el-button
-                  v-if="order.status === 'completed'"
                   size="small"
                   @click.stop="viewOrderDetail(order.id)"
                 >
@@ -115,10 +114,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { orderApi } from '@/api/order'
+import {onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {orderApi} from '@/api/order'
 
 const router = useRouter()
 

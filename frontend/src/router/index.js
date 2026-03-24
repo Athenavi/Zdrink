@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../stores/user'
+import {createRouter, createWebHistory} from 'vue-router'
+import {useUserStore} from '../stores/user'
 
 const routes = [
   {
@@ -55,6 +55,12 @@ const routes = [
     meta: { title: '确认订单' }
   },
   {
+      path: '/order/:id/payment',
+      name: 'OrderPayment',
+      component: () => import('../views/OrderPayment.vue'),
+      meta: {title: '订单支付'}
+  },
+    {
     path: '/order/:orderId',
     name: 'OrderDetail',
     component: () => import('../views/OrderDetail.vue'),
