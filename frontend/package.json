@@ -21,6 +21,6 @@
     "@vitejs/plugin-vue": "^4.3.4",
     "sass": "^1.66.1",
     "unplugin-vue-components": "^0.25.1",
-    "vite": "7.1.5"
+    "vite": "^7.3.1"
   }
 }
