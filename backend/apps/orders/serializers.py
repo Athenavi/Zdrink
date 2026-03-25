@@ -121,8 +121,12 @@ class OrderListSerializer(serializers.ModelSerializer):
         try:
             if hasattr(obj, 'items_count') and obj.items_count is not None:
                 return obj.items_count
+            # 使用 prefetch_related 优化查询
+            if hasattr(obj, '_prefetched_objects_cache') and 'items' in obj._prefetched_objects_cache:
+                return obj.items.all().count()
             return obj.items.count()
-        except Exception:
+        except Exception as e:
+            print(f'[WARNING] get_items_count error: {e}')
             return 0
 
     def get_customer_info(self, obj):

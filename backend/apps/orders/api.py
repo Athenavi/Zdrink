@@ -135,14 +135,14 @@ class OrderViewSet(ModelViewSet):
             queryset = Order.objects.filter(shop=self.request.tenant).select_related(
                 'user'
             ).prefetch_related(
-                'items', 'status_logs', 'payments'
+                'items', 'status_logs', 'order_payments'
             )
         else:
             print('[DEBUG] get_queryset - No tenant context, showing user orders only')
             queryset = Order.objects.select_related(
                 'user'
             ).prefetch_related(
-                'items', 'status_logs', 'payments'
+                'items', 'status_logs', 'order_payments'
             )
 
         # 客户只能看到自己的订单（使用 getattr 安全访问）
@@ -180,23 +180,23 @@ class OrderViewSet(ModelViewSet):
         print(f'[DEBUG] my_orders - User: {request.user}')
         print(f'[DEBUG] my_orders - User type: {getattr(request.user, "user_type", None)}')
         print(f'[DEBUG] my_orders - Request params: {request.query_params}')
-            
-        # 直接使用 get_queryset()，因为它已经根据用户类型过滤了
-        orders = self.get_queryset()
-
-        # 如果是普通用户，确保只显示自己的订单（双重保险）
-        if getattr(request.user, 'user_type', None) == 'customer':
-            orders = orders.filter(user=request.user)
-
-        # 获取状态过滤参数
-        status = request.query_params.get('status', None)
-        if status:
-            print(f'[DEBUG] Filtering by status: {status}')
-            orders = orders.filter(status=status)
-
-        print(f'[DEBUG] my_orders - Total orders: {orders.count()}')
 
         try:
+            # 直接使用 get_queryset()，因为它已经根据用户类型过滤了
+            orders = self.get_queryset()
+
+            # 如果是普通用户，确保只显示自己的订单（双重保险）
+            if getattr(request.user, 'user_type', None) == 'customer':
+                orders = orders.filter(user=request.user)
+
+            # 获取状态过滤参数
+            status = request.query_params.get('status', None)
+            if status:
+                print(f'[DEBUG] Filtering by status: {status}')
+                orders = orders.filter(status=status)
+
+            print(f'[DEBUG] my_orders - Total orders: {orders.count()}')
+
             # 应用分页
             page = self.paginate_queryset(orders)
 
@@ -207,10 +207,17 @@ class OrderViewSet(ModelViewSet):
             serializer = OrderListSerializer(orders, many=True)
             return Response(serializer.data)
         except Exception as e:
-            print(f'[ERROR] my_orders - 分页失败：{e}')
+            import traceback
+            print(f'[ERROR] my_orders - 发生错误：{e}')
+            print(f'[ERROR] Traceback: {traceback.format_exc()}')
             # 如果分页失败，直接返回所有数据
-            serializer = OrderListSerializer(orders, many=True)
-            return Response(serializer.data)
+            try:
+                orders = Order.objects.filter(user=request.user)
+                serializer = OrderListSerializer(orders, many=True)
+                return Response(serializer.data)
+            except Exception as e2:
+                print(f'[ERROR] my_orders - 降级处理也失败：{e2}')
+                return Response({'error': '服务器内部错误'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):
