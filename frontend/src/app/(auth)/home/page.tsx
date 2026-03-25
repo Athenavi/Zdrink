@@ -29,11 +29,13 @@ export default function HomePage() {
     const [activeTab, setActiveTab] = useState('home');
     const [searchKeyword, setSearchKeyword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [banners] = useState([
-        {id: 1, image: '/images/banner1.jpg', link: '/promotion/1'},
-        {id: 2, image: '/images/banner2.jpg', link: '/promotion/2'},
-        {id: 3, image: '/images/banner3.jpg', link: '/promotion/3'}
-    ]);
+    // 临时禁用轮播图，避免 404 错误
+    // const [banners] = useState([
+    //     {id: 1, image: '/images/banner1.jpg', link: '/promotion/1'},
+    //     {id: 2, image: '/images/banner2.jpg', link: '/promotion/2'},
+    //     {id: 3, image: '/images/banner3.jpg', link: '/promotion/3'}
+    // ]);
+    const [banners] = useState<any[]>([]);
     const [featuredShops, setFeaturedShops] = useState<Shop[]>([]);
 
     // 功能入口

@@ -7,6 +7,7 @@ import {CheckCircle2, Circle, Trash2} from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import Loading from '@/components/Loading';
 import {useCartStore} from '@/stores/cart';
+import {useUserStore} from '@/stores/user';
 import {formatPrice, getImageUrl} from '@/utils';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
@@ -14,15 +15,27 @@ type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 export default function CartPage() {
     const router = useRouter();
     const cartStore = useCartStore();
+    const userStore = useUserStore();
 
     const [loading, setLoading] = useState(false);
     const [orderType, setOrderType] = useState<OrderType>('dine_in');
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
+    // 检查登录状态
+    useEffect(() => {
+        if (!userStore.isLoggedIn) {
+            // 未登录，重定向到登录页
+            router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/cart')}`);
+            return;
+        }
+    }, [userStore.isLoggedIn]);
+
     // 初始化加载购物车
     useEffect(() => {
-        cartStore.getCart();
-    }, []);
+        if (userStore.isLoggedIn) {
+            cartStore.getCart();
+        }
+    }, [userStore.isLoggedIn]);
 
     // 初始化选中状态
     useEffect(() => {
@@ -130,6 +143,15 @@ export default function CartPage() {
         if (!sku || !sku.specifications) return '';
         return Object.values(sku.specifications).join(' ');
     };
+
+    // 如果用户未登录，显示加载中（实际会重定向）
+    if (!userStore.isLoggedIn) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loading loading={true} text="检查登录状态..."/>
+            </div>
+        );
+    }
 
     if (cartStore.cartItems.length === 0) {
         return (

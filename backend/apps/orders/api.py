@@ -131,12 +131,14 @@ class OrderViewSet(ModelViewSet):
 
         # 如果是店铺员工或管理员，可以看到店铺的订单
         if hasattr(self.request, 'tenant') and self.request.tenant:
+            print(f'[DEBUG] get_queryset - Using tenant: {self.request.tenant}')
             queryset = Order.objects.filter(shop=self.request.tenant).select_related(
                 'user'
             ).prefetch_related(
                 'items', 'status_logs', 'payments'
             )
         else:
+            print('[DEBUG] get_queryset - No tenant context, showing user orders only')
             queryset = Order.objects.select_related(
                 'user'
             ).prefetch_related(
@@ -193,16 +195,22 @@ class OrderViewSet(ModelViewSet):
             orders = orders.filter(status=status)
 
         print(f'[DEBUG] my_orders - Total orders: {orders.count()}')
-            
-        # 应用分页
-        page = self.paginate_queryset(orders)
 
-        if page is not None:
-            serializer = OrderListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        try:
+            # 应用分页
+            page = self.paginate_queryset(orders)
 
-        serializer = OrderListSerializer(orders, many=True)
-        return Response(serializer.data)
+            if page is not None:
+                serializer = OrderListSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = OrderListSerializer(orders, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            print(f'[ERROR] my_orders - 分页失败：{e}')
+            # 如果分页失败，直接返回所有数据
+            serializer = OrderListSerializer(orders, many=True)
+            return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):

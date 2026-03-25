@@ -36,10 +36,14 @@ export const useUserStore = create<UserState>()(
                     console.log('登录成功，保存 token');
                     console.log('用户信息:', user);
 
-                    // 保存 token
+                    // 保存 token（同时设置 localStorage 和 cookie）
                     set({token: access, isLoggedIn: true, userInfo: user});
                     localStorage.setItem('token', access);
                     localStorage.setItem('refresh_token', refresh);
+
+                    // 设置 cookie 供 Middleware 使用
+                    document.cookie = `token=${access}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 天
+                    document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 天
 
                     return response.data;
                 } catch (error: any) {
@@ -90,6 +94,10 @@ export const useUserStore = create<UserState>()(
                 set({userInfo: null, token: null, isLoggedIn: false});
                 localStorage.removeItem('token');
                 localStorage.removeItem('refresh_token');
+
+                // 清除 cookie
+                document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             },
 
             // 初始化用户信息

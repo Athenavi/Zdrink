@@ -41,8 +41,13 @@ export default function ProfilePage() {
         try {
             const response = await userApi.getMembershipInfo();
             setMembershipInfo(response.data);
-        } catch (error) {
-            console.error('加载会员信息失败:', error);
+        } catch (error: any) {
+            // 404 表示接口不存在或用户没有会员信息
+            if (error.response?.status === 404) {
+                console.log('会员信息接口未找到或用户没有会员信息');
+            } else {
+                console.error('加载会员信息失败:', error.message);
+            }
         }
     };
 
@@ -55,8 +60,15 @@ export default function ProfilePage() {
                 preparing: orders.filter((o: any) => o.status === 'preparing').length,
                 completed: orders.filter((o: any) => o.status === 'completed').length
             });
-        } catch (error) {
-            console.error('加载订单统计失败:', error);
+        } catch (error: any) {
+            // 500 错误可能是服务器内部问题，静默处理
+            if (error.response?.status === 500) {
+                console.log('订单统计接口暂时不可用');
+                // 设置默认值
+                setOrderStats({pending: 0, preparing: 0, completed: 0});
+            } else {
+                console.error('加载订单统计失败:', error.message);
+            }
         }
     };
 

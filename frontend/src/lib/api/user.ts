@@ -4,7 +4,7 @@ import {User} from '@/types';
 export const userApi = {
     // 登录
     login(credentials: { username: string; password: string }) {
-        return apiClient.post<{ access: string; refresh: string }>('/auth/login/', credentials);
+        return apiClient.post<{ access: string; refresh: string; user: User }>('/auth/login/', credentials);
     },
 
     // 注册
@@ -34,7 +34,7 @@ export const userApi = {
 
     // 获取会员信息
     getMembershipInfo() {
-        return apiClient.get('/users/membership-info/');
+        return apiClient.get('/users/profile/membership/');
     },
 
     // 签到
