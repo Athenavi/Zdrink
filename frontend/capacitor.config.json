@@ -1,0 +1,53 @@
+{
+  "appId": "com.zdrink.pos",
+  "appName": "zDrink POS",
+  "webDir": ".next/out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "yourdomain.com",
+      "*.yourdomain.com"
+    ],
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#FFFFFF",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true,
+      "layoutMode": "RESPONSE_MODE_SCALE_TO_FILL",
+      "imageWidth": 128
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true,
+      "scrollToTopOnResize": true
+    }
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "releaseType": "APK"
+    },
+    "webContentsDebuggingEnabled": true,
+    "allowMixedContent": true,
+    "captureInput": true
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollsToTop": false,
+    "contentInsets": {
+      "top": 0,
+      "bottom": 0
+    }
+  }
+}

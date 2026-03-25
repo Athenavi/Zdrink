@@ -41,17 +41,21 @@ class LoginView(APIView):
     authentication_classes = []  # 禁用认证，包括 CSRF
 
     def post(self, request):
+        print(f"[DEBUG] LoginView - Request data: {request.data}")
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
             login(request, user)
             refresh = RefreshToken.for_user(user)
-            return Response({
+            response_data = {
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'message': '登录成功'
-            }, status=status.HTTP_200_OK)
+            }
+            print(f"[DEBUG] LoginView - Login successful for user: {user.username}")
+            return Response(response_data, status=status.HTTP_200_OK)
+        print(f"[DEBUG] LoginView - Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -103,6 +107,19 @@ def get_current_user(request):
     """获取当前用户信息（公共接口，不需要租户上下文）"""
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def auth_error_handler(request):
+    """认证错误处理页面"""
+    error = request.GET.get('error', 'unknown')
+    error_description = request.GET.get('error_description', '认证过程中发生错误')
+
+    return Response({
+        'error': error,
+        'error_description': error_description
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 from .models import MembershipLevelConfig, PointsLog, PointsRule, MemberRecharge

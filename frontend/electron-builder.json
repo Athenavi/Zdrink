@@ -1,0 +1,99 @@
+{
+  "appId": "com.zdrink.app",
+  "productName": "zDrink POS",
+  "version": "1.0.0",
+  "description": "智能餐饮管理系统",
+  "author": "zDrink Team",
+  "directories": {
+    "output": "release",
+    "buildResources": "public/icons"
+  },
+  "files": [
+    ".next/standalone/**/*",
+    ".next/static/**/*",
+    "public/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "electron/main.prod.js"
+  },
+  "extraResources": [
+    {
+      "from": "public/icons",
+      "to": "icons"
+    }
+  ],
+  "mac": {
+    "category": "public.app-category.business",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      }
+    ],
+    "icon": "public/icons/icon.icns",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "public/icons/icon.ico",
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "deb",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "category": "Office",
+    "icon": "public/icons"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "zDrink POS"
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://yourdomain.com/releases"
+  },
+  "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+}

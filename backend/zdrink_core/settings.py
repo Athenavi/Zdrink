@@ -213,6 +213,21 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
 ]
 
+# 允许的自定义请求头
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'referer',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-tenant',  # 租户标识头
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF 配置
