@@ -89,7 +89,13 @@ apiClient.interceptors.response.use(
                     break;
 
                 case 403:
-                    console.error('没有权限访问');
+                    // 权限不足，可能是 token 失效或用户没有权限
+                    console.warn('没有权限访问，请检查登录状态');
+                    // 如果是客户端，且当前不在登录页，可以考虑重定向到登录页
+                    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                        // 不立即重定向，让调用方决定如何处理
+                        // 可以在 catch 块中检查 error.response?.status === 403
+                    }
                     break;
 
                 case 404:

@@ -18,12 +18,21 @@ export function getImageUrl(path?: string | null): string {
 
 /**
  * 格式化价格
- * @param price 价格（分）
+ * @param price 价格（支持 number 或 string 类型，后端返回的 Decimal 字符串）
  * @returns 格式化后的价格字符串
  */
-export function formatPrice(price?: number | null): string {
+export function formatPrice(price?: number | string | null): string {
     if (price == null) return '¥0.00';
-    return `¥${(price / 100).toFixed(2)}`;
+
+    // 如果是字符串，转换为数字
+    let numPrice = typeof price === 'string' ? parseFloat(price) : price;
+
+    // 确保是有效数字
+    if (isNaN(numPrice)) {
+        numPrice = 0;
+    }
+
+    return `¥${numPrice.toFixed(2)}`;
 }
 
 /**

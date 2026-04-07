@@ -1,5 +1,4 @@
 import uuid
-from datetime import time
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -106,7 +105,9 @@ class PaymentTransaction(models.Model):
         super().save(*args, **kwargs)
 
     def generate_transaction_no(self):
-        return f"T{int(time.time())}{uuid.uuid4().hex[:8].upper()}"
+        """生成交易号"""
+        import time as time_module
+        return f"T{int(time_module.time())}{uuid.uuid4().hex[:8].upper()}"
 
 
 class RefundRequest(models.Model):
@@ -147,7 +148,8 @@ class RefundRequest(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.refund_no:
-            self.refund_no = f"R{int(time.time())}{uuid.uuid4().hex[:8].upper()}"
+            import time as time_module
+            self.refund_no = f"R{int(time_module.time())}{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
 

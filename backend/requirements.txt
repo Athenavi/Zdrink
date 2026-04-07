@@ -19,11 +19,8 @@ django-tenants
 psycopg2-binary
 django-guardian
 django-role-permissions
+# 支付SDK
 wechatpayv3
-alipay-sdk-python
+python-alipay-sdk
 pycryptodome
-qrcode
-escpos
 qrcode[pil]
-reportlab
-django-qr-code

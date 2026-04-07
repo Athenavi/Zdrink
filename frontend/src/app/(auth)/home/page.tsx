@@ -50,11 +50,15 @@ export default function HomePage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            // 加载推荐店铺
+            // 加载推荐店铺（不需要登录）
             const shopResponse = await shopApi.getShops({is_active: true, limit: 6});
             setFeaturedShops((shopResponse.data.results || shopResponse.data) as Shop[]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('加载数据失败:', error);
+            // 如果是 403 或 401 错误，不显示错误提示，因为店铺列表应该是公开的
+            if (error.response?.status !== 403 && error.response?.status !== 401) {
+                console.error('加载店铺数据失败');
+            }
         } finally {
             setLoading(false);
         }

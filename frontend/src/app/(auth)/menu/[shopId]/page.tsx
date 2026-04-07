@@ -59,23 +59,48 @@ export default function MenuPage() {
             const response = await productApi.getCategories(shopId);
             const categoriesData = response.data;
 
+            // 处理可能的分页响应格式
+            const categoriesArray = Array.isArray(categoriesData)
+                ? categoriesData
+                : (categoriesData.results || []);
+
+            if (!Array.isArray(categoriesArray)) {
+                console.error('分类数据格式错误:', categoriesData);
+                setCategories([]);
+                return;
+            }
+
             // 为每个分类加载商品
             const categoriesWithProducts = await Promise.all(
-                categoriesData.map(async (category: Category) => {
-                    const productResponse = await productApi.getPublicProducts(shopId, {
-                        category: category.id,
-                        page_size: 50
-                    });
-                    return {
-                        ...category,
-                        products: ((productResponse.data as any).results || productResponse.data) as Product[]
-                    };
+                categoriesArray.map(async (category: Category) => {
+                    try {
+                        const productResponse = await productApi.getPublicProducts(shopId, {
+                            category: category.id,
+                            page_size: 50
+                        });
+                        const productsData = productResponse.data;
+                        const products = Array.isArray(productsData)
+                            ? productsData
+                            : ((productsData as any).results || []);
+
+                        return {
+                            ...category,
+                            products: products as Product[]
+                        };
+                    } catch (error) {
+                        console.error(`加载分类 ${category.name} 的商品失败:`, error);
+                        return {
+                            ...category,
+                            products: []
+                        };
+                    }
                 })
             );
 
             setCategories(categoriesWithProducts);
         } catch (error) {
             console.error('加载分类失败:', error);
+            setCategories([]);
         } finally {
             setLoading(false);
         }

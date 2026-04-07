@@ -10,8 +10,8 @@ interface ProductCardProps {
     id: number;
     name: string;
     description?: string;
-    price: number;
-    originalPrice?: number;
+    price: number | string;  // 支持 number 和 string
+    originalPrice?: number | string;
     image?: string;
     isAvailable: boolean;
     onClick?: () => void;

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import {CheckCircle, ChevronRight, Clock, Package, XCircle} from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import Loading from '@/components/Loading';
+import {useUserStore} from '@/stores/user';
 import {orderApi} from '@/lib/api/order';
 import {formatPrice, getImageUrl} from '@/utils';
 import {Order} from '@/types';
@@ -21,6 +22,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 
 export default function OrdersPage() {
     const router = useRouter();
+    const userStore = useUserStore();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
@@ -29,8 +31,21 @@ export default function OrdersPage() {
     const [pageSize] = useState(10);
     const [total, setTotal] = useState(0);
 
+    // 检查登录状态
+    useEffect(() => {
+        if (!userStore.isLoggedIn) {
+            // 未登录，重定向到登录页
+            router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/order/list')}`);
+            return;
+        }
+    }, [userStore.isLoggedIn]);
+
     // 获取订单列表
     const loadOrders = async () => {
+        if (!userStore.isLoggedIn) {
+            return;
+        }
+
         setLoading(true);
         try {
             const params: any = {
@@ -46,16 +61,23 @@ export default function OrdersPage() {
             const data = response.data as any;
             setOrders(data.results || data);
             setTotal(data.count || (data as Order[]).length);
-        } catch (error) {
+        } catch (error: any) {
             console.error('获取订单列表失败:', error);
+            // 如果是 401 或 403，可能是 token 失效，清除登录状态
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                userStore.logout();
+                router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/order/list')}`);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        loadOrders();
-    }, [filterStatus, page]);
+        if (userStore.isLoggedIn) {
+            loadOrders();
+        }
+    }, [filterStatus, page, userStore.isLoggedIn]);
 
     // 取消订单
     const cancelOrder = async (orderId: number, event: React.MouseEvent) => {

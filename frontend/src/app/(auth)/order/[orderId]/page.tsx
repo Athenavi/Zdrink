@@ -61,7 +61,8 @@ export default function OrderDetailPage() {
     };
 
     const payOrder = () => {
-        alert('支付功能开发中...');
+        // 跳转到支付页面
+        router.push(`/order/${orderId}/pay?method=wechat`);
     };
 
     const confirmReceive = async () => {

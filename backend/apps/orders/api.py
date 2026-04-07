@@ -159,8 +159,10 @@ class OrderViewSet(ModelViewSet):
         return OrderDetailSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'my_orders']:
+        if self.action in ['create', 'my_orders', 'cancel']:
+            # 创建订单、查看我的订单、取消订单只需要认证
             return [permissions.IsAuthenticated()]
+        # 其他操作需要店铺员工权限
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):

@@ -1,12 +1,20 @@
 /**
  * 格式化价格
- * @param price - 价格数值
- * @returns 格式化后的价格字符串（带¥符号）
+ * @param price - 价格数值 (支持 number 或 string 类型)
+ * @returns 格式化后的价格字符串 (带¥符号)
  */
 export const formatPrice = (price: number | string): string => {
-    if (typeof price !== 'number') {
-        price = parseFloat(price as string) || 0;
+    if (typeof price === 'string') {
+        // 如果是字符串，转换为数字
+        price = parseFloat(price);
     }
+
+    // 确保是有效数字
+    if (isNaN(price as number)) {
+        price = 0;
+    }
+
+    // 保留两位小数并返回
     return `¥${(price as number).toFixed(2)}`;
 };
 

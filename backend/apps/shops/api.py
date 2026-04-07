@@ -14,7 +14,11 @@ from .serializers import (
 
 
 class ShopListView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        # GET 请求允许未认证用户访问
+        return [permissions.AllowAny()]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -23,6 +27,10 @@ class ShopListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+
+        # 如果用户未认证，只返回激活的店铺
+        if not user.is_authenticated:
+            return Shop.objects.filter(is_active=True)
 
         if user.user_type == 'super_admin':
             return Shop.objects.all()

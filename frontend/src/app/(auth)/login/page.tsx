@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, Suspense} from 'react';
+import {Suspense, useState} from 'react';
 import {useRouter, useSearchParams} from 'next/navigation';
 import Link from 'next/link';
 import {useUserStore} from '@/stores/user';
@@ -46,6 +46,22 @@ function LoginContent() {
 
             // 尝试获取具体的错误信息
             let errorMsg = '登录失败，请检查用户名和密码';
+
+            if (err.response?.data) {
+                const errorData = err.response.data;
+                // 处理 Django REST Framework 的错误格式
+                if (errorData.non_field_errors) {
+                    errorMsg = errorData.non_field_errors[0];
+                } else if (errorData.detail) {
+                    errorMsg = errorData.detail;
+                } else if (typeof errorData === 'object') {
+                    // 处理字段级别的错误
+                    const firstField = Object.keys(errorData)[0];
+                    if (firstField && errorData[firstField][0]) {
+                        errorMsg = errorData[firstField][0];
+                    }
+                }
+            }
 
             if (err.response?.data) {
                 const errorData = err.response.data;
@@ -114,10 +130,11 @@ function LoginContent() {
                                 type="text"
                                 value={formData.username}
                                 onChange={(e) => setFormData({...formData, username: e.target.value})}
-                                placeholder="请输入用户名"
+                                placeholder="请输入用户名（例如：admin）"
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 required
                             />
+                            <p className="mt-1 text-xs text-gray-500">测试账号：admin / admin123456</p>
                         </div>
 
                         <div>

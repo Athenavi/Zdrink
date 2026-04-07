@@ -23,7 +23,8 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
 class CreatePaymentSerializer(serializers.Serializer):
     """创建支付序列化器"""
     order_id = serializers.IntegerField()
-    payment_method_id = serializers.IntegerField()
+    payment_method_id = serializers.IntegerField(required=False)
+    payment_method = serializers.CharField(required=False)  # 支持 'wechat', 'alipay', 'cash'
     openid = serializers.CharField(required=False, allow_blank=True)  # 微信支付需要
 
     def validate(self, data):
@@ -40,17 +41,33 @@ class CreatePaymentSerializer(serializers.Serializer):
         except Order.DoesNotExist:
             raise serializers.ValidationError("订单不存在")
 
-        # 验证支付方式
-        try:
-            payment_method = PaymentMethod.objects.get(
-                id=data['payment_method_id'],
-                shop=self.context['request'].tenant,
-                is_active=True
-            )
-            data['payment_method'] = payment_method
-        except PaymentMethod.DoesNotExist:
-            raise serializers.ValidationError("支付方式不可用")
+        # 验证支付方式 - 支持ID或代码
+        payment_method = None
 
+        if 'payment_method_id' in data and data['payment_method_id']:
+            # 使用ID查找
+            try:
+                payment_method = PaymentMethod.objects.get(
+                    id=data['payment_method_id'],
+                    shop=self.context['request'].tenant,
+                    is_active=True
+                )
+            except PaymentMethod.DoesNotExist:
+                raise serializers.ValidationError("支付方式不存在")
+        elif 'payment_method' in data and data['payment_method']:
+            # 使用代码查找
+            try:
+                payment_method = PaymentMethod.objects.get(
+                    code=data['payment_method'],
+                    shop=self.context['request'].tenant,
+                    is_active=True
+                )
+            except PaymentMethod.DoesNotExist:
+                raise serializers.ValidationError(f"支付方式 '{data['payment_method']}' 不可用")
+        else:
+            raise serializers.ValidationError("请提供支付方式ID或代码")
+
+        data['payment_method'] = payment_method
         return data
 
 

@@ -1,11 +1,15 @@
-from apps.core.permissions import IsShopOwnerOrStaff, HasShopPermission
+from decimal import Decimal
+
 from django.db import transaction
+from django.db.models import Sum, Count
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import IsShopOwnerOrStaff
 from .models import PaymentMethod, PaymentTransaction, RefundRequest, WechatPayConfig, AlipayConfig
 from .serializers import (
     PaymentMethodSerializer, PaymentTransactionSerializer, CreatePaymentSerializer,
@@ -101,7 +105,8 @@ class PaymentTransactionViewSet(ModelViewSet):
             )
 
         # 验证退款金额
-        if Decimal(refund_amount) > payment_transaction.amount - payment_transaction.refund_amount:
+        refund_amount_decimal = Decimal(str(refund_amount))
+        if refund_amount_decimal > payment_transaction.amount - payment_transaction.refund_amount:
             return Response(
                 {'error': '退款金额超过可退金额'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -109,11 +114,11 @@ class PaymentTransactionViewSet(ModelViewSet):
 
         try:
             payment_service = PaymentServiceFactory.get_service(payment_transaction.payment_method)
-            refund_result = payment_service.refund(payment_transaction, Decimal(refund_amount), reason)
+            refund_result = payment_service.refund(payment_transaction, refund_amount_decimal, reason)
 
             # 更新退款信息
-            payment_transaction.refund_amount += Decimal(refund_amount)
-            if payment_transaction.refund_amount == payment_transaction.amount:
+            payment_transaction.refund_amount += refund_amount_decimal
+            if payment_transaction.refund_amount >= payment_transaction.amount:
                 payment_transaction.status = 'refunded'
                 payment_transaction.refunded_at = timezone.now()
             payment_transaction.refund_data = refund_result
@@ -122,7 +127,7 @@ class PaymentTransactionViewSet(ModelViewSet):
             # 创建退款申请记录
             refund_request = RefundRequest.objects.create(
                 transaction=payment_transaction,
-                refund_amount=refund_amount,
+                refund_amount=refund_amount_decimal,
                 reason=reason,
                 status='completed',
                 handled_by=request.user,
@@ -132,7 +137,7 @@ class PaymentTransactionViewSet(ModelViewSet):
             return Response({
                 'message': '退款成功',
                 'refund_no': refund_request.refund_no,
-                'refund_amount': refund_amount
+                'refund_amount': float(refund_amount_decimal)
             })
 
         except Exception as e:
@@ -222,8 +227,24 @@ def wechat_pay_callback(request):
     from .services import WechatPaymentService
 
     try:
+        # 从回调中提取商户号，找到对应的支付方式
+        import json
+        body_data = json.loads(request.body.decode('utf-8'))
+        mchid = body_data.get('mchid')
+
+        if not mchid:
+            return Response({'code': 'FAIL', 'message': '缺少商户号'}, status=400)
+        
         # 获取支付方式
-        payment_method = PaymentMethod.objects.get(code='wechat', is_active=True)
+        payment_method = PaymentMethod.objects.filter(
+            code='wechat',
+            is_active=True,
+            shop__wechat_pay_config__mch_id=mchid
+        ).first()
+
+        if not payment_method:
+            return Response({'code': 'FAIL', 'message': '未找到对应的支付方式配置'}, status=400)
+        
         payment_service = WechatPaymentService(payment_method)
 
         # 处理回调
@@ -238,12 +259,42 @@ def wechat_pay_callback(request):
         return Response({'code': 'FAIL', 'message': str(e)}, status=400)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'GET'])
 @csrf_exempt
 def alipay_callback(request):
     """支付宝支付回调"""
-    # 实现支付宝回调处理
-    return Response('success')
+    from .services import AlipayPaymentService
+
+    try:
+        # 从回调数据中获取app_id
+        data = request.POST.dict() if request.method == 'POST' else request.GET.dict()
+        app_id = data.get('app_id')
+
+        if not app_id:
+            return Response('fail', status=400)
+
+        # 获取支付方式
+        payment_method = PaymentMethod.objects.filter(
+            code='alipay',
+            is_active=True,
+            shop__alipay_config__app_id=app_id
+        ).first()
+
+        if not payment_method:
+            return Response('fail', status=400)
+
+        payment_service = AlipayPaymentService(payment_method)
+
+        # 处理回调
+        success = payment_service.handle_callback(request)
+
+        if success:
+            return Response('success')
+        else:
+            return Response('fail', status=400)
+
+    except Exception as e:
+        return Response('fail', status=400)
 
 
 class WechatPayConfigView(generics.RetrieveUpdateAPIView):

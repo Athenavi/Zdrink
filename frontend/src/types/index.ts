@@ -47,10 +47,10 @@ export interface Product {
     id: number;
     name: string;
     description?: string;
-    price: number;
-    original_price?: number;
-    base_price?: number;
-    cost_price?: number;
+    price: number | string;  // 支持 number 和 string (后端返回 Decimal 字符串)
+    original_price?: number | string;
+    base_price?: number | string;
+    cost_price?: number | string;
     image?: string;
     main_image?: string;
     images?: string[];
@@ -70,7 +70,7 @@ export interface SKU {
     id: number;
     name?: string;
     sku_name?: string;
-    price: number;
+    price: number | string;  // 支持 number 和 string (后端返回 Decimal 字符串)
     stock?: number;
     stock_quantity?: number;
     specifications?: Record<string, any>;
@@ -110,8 +110,8 @@ export interface Cart {
     id: number;
     user: number;
     items: CartItem[];
-    total_quantity: number;
-    total_price: number;
+    total_quantity: number | string;  // 支持 number 和 string
+    total_price: number | string;  // 支持 number 和 string
 }
 
 export interface CartItem {
@@ -126,16 +126,8 @@ export interface CartItem {
         specifications?: Record<string, any>;
     };
     quantity: number;
-    unit_price: number;
-    total_price: number;
-}
-
-export interface Cart {
-    id: number;
-    user: number;
-    items: CartItem[];
-    total_quantity: number;
-    total_price: number;
+    unit_price: number | string;  // 支持 number 和 string
+    total_price: number | string;  // 支持 number 和 string
 }
 
 // 订单相关类型
@@ -148,11 +140,11 @@ export interface Order {
     shop_name?: string;
     status: 'pending' | 'paid' | 'preparing' | 'ready' | 'delivered' | 'completed' | 'cancelled' | 'confirmed';
     payment_status: 'unpaid' | 'paid' | 'refunded';
-    total_amount: number;
-    discount_amount?: number;
-    payment_amount: number;
-    paid_amount?: number;
-    delivery_fee?: number;
+    total_amount: number | string;  // 支持 number 和 string
+    discount_amount?: number | string;
+    payment_amount: number | string;  // 支持 number 和 string
+    paid_amount?: number | string;
+    delivery_fee?: number | string;
     items: OrderItem[];
     delivery_info?: any;
     delivery_type?: 'delivery' | 'pickup' | 'dine_in';
@@ -177,9 +169,9 @@ export interface OrderItem {
     product_name: string;
     product_image?: string;
     quantity: number;
-    unit_price: number;
-    total_price: number;
-    price?: number;
+    unit_price: number | string;  // 支持 number 和 string
+    total_price: number | string;  // 支持 number 和 string
+    price?: number | string;
     specifications?: Record<string, any>;
     sku_specifications?: Record<string, any>;
     sku_name?: string;
