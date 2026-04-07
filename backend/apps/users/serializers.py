@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from .models import User, MembershipLevelConfig, PointsLog, PointsRule, MemberRecharge
+from .models import User, MembershipLevelConfig, PointsLog, PointsRule, MemberRecharge, UserAddress
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -130,3 +130,17 @@ class PointsConsumeSerializer(serializers.Serializer):
     """积分消费序列化器"""
     points = serializers.IntegerField(min_value=1)
     order_id = serializers.IntegerField(required=False)
+
+
+class UserAddressSerializer(serializers.ModelSerializer):
+    """用户地址序列化器"""
+    full_address = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = UserAddress
+        fields = [
+            'id', 'name', 'phone', 'province', 'city', 'district',
+            'detail', 'full_address', 'is_default', 'label',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ('user',)

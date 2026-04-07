@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .api import (
     MembershipLevelConfigViewSet, PointsRuleViewSet, PointsLogView,
-    MemberRechargeViewSet, user_membership_info, consume_points, signin_earn_points,
+    MemberRechargeViewSet, UserAddressViewSet, user_membership_info, consume_points, signin_earn_points,
     auth_error_handler
 )
 
@@ -11,6 +11,7 @@ router = DefaultRouter()
 router.register(r'membership-levels', MembershipLevelConfigViewSet, basename='membership-level')
 router.register(r'points-rules', PointsRuleViewSet, basename='points-rule')
 router.register(r'recharges', MemberRechargeViewSet, basename='member-recharge')
+router.register(r'addresses', UserAddressViewSet, basename='user-address')
 
 urlpatterns = [
     path('', include(router.urls)),

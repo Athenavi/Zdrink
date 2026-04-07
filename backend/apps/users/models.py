@@ -226,3 +226,41 @@ class MemberRecharge(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.recharge_amount}"
+
+
+class UserAddress(models.Model):
+    """用户地址"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    name = models.CharField(max_length=100, verbose_name='收货人姓名')
+    phone = models.CharField(max_length=20, verbose_name='联系电话')
+    province = models.CharField(max_length=50, verbose_name='省份')
+    city = models.CharField(max_length=50, verbose_name='城市')
+    district = models.CharField(max_length=50, verbose_name='区县')
+    detail = models.TextField(verbose_name='详细地址')
+    is_default = models.BooleanField(default=False, verbose_name='是否默认')
+    label = models.CharField(max_length=50, blank=True, verbose_name='地址标签')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_addresses'
+        verbose_name = '用户地址'
+        verbose_name_plural = '用户地址'
+        ordering = ['-is_default', '-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.name} - {self.full_address}"
+
+    @property
+    def full_address(self):
+        """完整地址"""
+        return f"{self.province}{self.city}{self.district}{self.detail}"
+
+    def save(self, *args, **kwargs):
+        # 如果设置为默认地址，取消其他地址的默认状态
+        if self.is_default:
+            UserAddress.objects.filter(
+                user=self.user,
+                is_default=True
+            ).exclude(id=self.id).update(is_default=False)
+        super().save(*args, **kwargs)

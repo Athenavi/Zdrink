@@ -122,11 +122,11 @@ def auth_error_handler(request):
     }, status=status.HTTP_400_BAD_REQUEST)
 
 
-from .models import MembershipLevelConfig, PointsLog, PointsRule, MemberRecharge
+from .models import MembershipLevelConfig, PointsLog, PointsRule, MemberRecharge, UserAddress
 from .serializers import (
     MembershipLevelConfigSerializer, PointsLogSerializer, PointsRuleSerializer,
     MemberRechargeSerializer, UserMembershipSerializer, RechargeRequestSerializer,
-    PointsConsumeSerializer
+    PointsConsumeSerializer, UserAddressSerializer
 )
 from .services import PointsService, MembershipService
 
@@ -285,3 +285,15 @@ def signin_earn_points(request):
             {'error': '签到规则未配置'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+class UserAddressViewSet(ModelViewSet):
+    """用户地址管理"""
+    serializer_class = UserAddressSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAddress.objects.filter(user=self.request.user).order_by('-is_default', '-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

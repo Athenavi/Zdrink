@@ -209,7 +209,10 @@ export default function ProfilePage() {
             {/* 资产相关 */}
             <div className="bg-white mx-3 mt-4 rounded-xl overflow-hidden">
                 <div className="divide-y divide-gray-100">
-                    <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
+                    <div
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                        onClick={() => router.push('/coupons')}
+                    >
                         <div className="flex items-center gap-3">
                             <CreditCard className="w-5 h-5 text-orange-500"/>
                             <span className="font-medium">优惠券</span>
@@ -221,17 +224,23 @@ export default function ProfilePage() {
                             <ChevronRight className="w-5 h-5 text-gray-400"/>
                         </div>
                     </div>
-                    <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
+                    <div
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                        onClick={() => router.push('/points')}
+                    >
                         <div className="flex items-center gap-3">
                             <Gift className="w-5 h-5 text-red-500"/>
                             <span className="font-medium">积分中心</span>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400"/>
                     </div>
-                    <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
+                    <div
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                        onClick={() => router.push('/products?shop_id=1')}
+                    >
                         <div className="flex items-center gap-3">
                             <Star className="w-5 h-5 text-yellow-500"/>
-                            <span className="font-medium">我的收藏</span>
+                            <span className="font-medium">全部商品</span>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400"/>
                     </div>
