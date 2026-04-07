@@ -24,3 +24,6 @@ wechatpayv3
 python-alipay-sdk
 pycryptodome
 qrcode[pil]
+# 第三方登录
+social-auth-app-django
+social-auth-core

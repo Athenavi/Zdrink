@@ -195,6 +195,7 @@ class Promotion(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name='gift_promotions',
         verbose_name='赠品'
     )
     gift_quantity = models.IntegerField(default=1, verbose_name='赠品数量')
@@ -203,11 +204,13 @@ class Promotion(models.Model):
     apply_to_products = models.ManyToManyField(
         'products.Product',
         blank=True,
+        related_name='applicable_promotions',
         verbose_name='适用商品'
     )
     apply_to_categories = models.ManyToManyField(
         'products.Category',
         blank=True,
+        related_name='applicable_promotions',
         verbose_name='适用分类'
     )
 

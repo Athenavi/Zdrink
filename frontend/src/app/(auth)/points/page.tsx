@@ -90,9 +90,9 @@ export default function PointsPage() {
         }
     };
 
-    const pointsProgress = membershipInfo
-        ? Math.min((membershipInfo.available_points / (membershipInfo.next_level_points || 1000)) * 100, 100)
-        : 0;
+    const pointsProgress = membershipInfo && membershipInfo.next_level_info
+        ? Math.min((membershipInfo.total_points / membershipInfo.next_level_info.min_points) * 100, 100)
+        : 100;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -114,8 +114,12 @@ export default function PointsPage() {
                 {membershipInfo && (
                     <div className="mt-4">
                         <div className="flex items-center justify-between text-sm mb-2">
-                            <span>{membershipInfo.level_name}</span>
-                            <span>再得 {membershipInfo.next_level_points - membershipInfo.available_points} 积分升级</span>
+                            <span>{membershipInfo.membership_level_name}</span>
+                            {membershipInfo.next_level_info ? (
+                                <span>再得 {membershipInfo.next_level_info.points_needed} 积分升级</span>
+                            ) : (
+                                <span>已达最高等级</span>
+                            )}
                         </div>
                         <div className="h-2 bg-white/30 rounded-full overflow-hidden">
                             <div

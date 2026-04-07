@@ -6,6 +6,10 @@ from .api import (
     MemberRechargeViewSet, UserAddressViewSet, user_membership_info, consume_points, signin_earn_points,
     auth_error_handler
 )
+from .social_views import (
+    WeixinLoginView, AlipayLoginView, SocialCallbackView,
+    SocialBindView, SocialUnbindView, SocialBindingsView
+)
 
 router = DefaultRouter()
 router.register(r'membership-levels', MembershipLevelConfigViewSet, basename='membership-level')
@@ -20,4 +24,12 @@ urlpatterns = [
     path('points/consume/', consume_points, name='consume-points'),
     path('points/signin/', signin_earn_points, name='signin-points'),
     path('error/', auth_error_handler, name='auth-error'),
+
+    # 第三方登录
+    path('social/weixin/login/', WeixinLoginView.as_view(), name='weixin-login'),
+    path('social/alipay/login/', AlipayLoginView.as_view(), name='alipay-login'),
+    path('social/callback/', SocialCallbackView.as_view(), name='social-callback'),
+    path('social/bind/', SocialBindView.as_view(), name='social-bind'),
+    path('social/unbind/', SocialUnbindView.as_view(), name='social-unbind'),
+    path('social/bindings/', SocialBindingsView.as_view(), name='social-bindings'),
 ]

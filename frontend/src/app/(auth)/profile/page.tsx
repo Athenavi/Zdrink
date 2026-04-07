@@ -104,9 +104,9 @@ export default function ProfilePage() {
         router.push(`/order/list?status=${status}`);
     };
 
-    const pointsProgress = membershipInfo
-        ? Math.min((membershipInfo.available_points / (membershipInfo.next_level_points || 1000)) * 100, 100)
-        : 0;
+    const pointsProgress = membershipInfo && membershipInfo.next_level_info
+        ? Math.min((membershipInfo.total_points / membershipInfo.next_level_info.min_points) * 100, 100)
+        : 100;
 
     const userInfo = userStore.userInfo as any || {};
 
@@ -149,7 +149,7 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between mb-3">
             <span
                 className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-sm font-bold">
-              {membershipInfo.level_name}
+              {membershipInfo.membership_level_name}
             </span>
                         <span className="text-orange-500 font-bold text-sm">
               可用积分：{membershipInfo.available_points}
@@ -163,7 +163,11 @@ export default function ProfilePage() {
                             />
                         </div>
                         <div className="text-center text-xs text-gray-500 mt-2">
-                            再得 {membershipInfo.next_level_points - membershipInfo.available_points} 积分升级
+                            {membershipInfo.next_level_info ? (
+                                `再得 ${membershipInfo.next_level_info.points_needed} 积分升级`
+                            ) : (
+                                '已达最高等级'
+                            )}
                         </div>
                     </div>
                 </div>

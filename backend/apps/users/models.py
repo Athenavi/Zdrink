@@ -50,6 +50,11 @@ class User(AbstractUser):
                                  verbose_name='推荐人')
     referral_code = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='推荐码')
 
+    # 第三方登录相关
+    wechat_openid = models.CharField(max_length=128, blank=True, null=True, verbose_name='微信OpenID')
+    wechat_unionid = models.CharField(max_length=128, blank=True, null=True, verbose_name='微信UnionID')
+    alipay_user_id = models.CharField(max_length=128, blank=True, null=True, verbose_name='支付宝用户ID')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -264,3 +269,32 @@ class UserAddress(models.Model):
                 is_default=True
             ).exclude(id=self.id).update(is_default=False)
         super().save(*args, **kwargs)
+
+
+class SocialAuth(models.Model):
+    """第三方社交账号绑定关系"""
+    PROVIDER_CHOICES = (
+        ('weixin', '微信'),
+        ('alipay', '支付宝'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social_auths')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, verbose_name='提供商')
+    openid = models.CharField(max_length=128, verbose_name='OpenID/用户ID')
+    unionid = models.CharField(max_length=128, blank=True, null=True, verbose_name='UnionID')
+    extra_data = models.JSONField(default=dict, blank=True, verbose_name='额外数据')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='绑定时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'social_auth'
+        verbose_name = '第三方账号绑定'
+        verbose_name_plural = '第三方账号绑定'
+        unique_together = ['provider', 'openid']
+        indexes = [
+            models.Index(fields=['provider', 'openid']),
+            models.Index(fields=['user', 'provider']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_provider_display()} - {self.openid}"

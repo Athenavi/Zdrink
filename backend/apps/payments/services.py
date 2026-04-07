@@ -27,6 +27,55 @@ class PaymentService:
         """退款"""
         raise NotImplementedError
 
+    def _award_order_points(self, order):
+        """订单支付成功后给予积分奖励"""
+        if not order.user:
+            return
+
+        try:
+            from apps.users.models import PointsRule
+            from apps.users.services import PointsService
+            from django.db import transaction as db_transaction
+
+            # 获取消费积分规则
+            rule = PointsRule.objects.filter(
+                shop=order.shop,
+                rule_type='order_earn',
+                is_active=True
+            ).first()
+
+            if not rule:
+                return
+
+            points_per_yuan = rule.config.get('points_per_yuan', 10)
+            min_order_amount = rule.config.get('min_order_amount', 0)
+
+            # 检查是否达到最小订单金额
+            if order.total_amount < min_order_amount:
+                return
+
+            # 计算积分（每元获得的积分数 * 订单金额）
+            points_to_award = int(float(order.total_amount) * points_per_yuan)
+
+            if points_to_award <= 0:
+                return
+
+            # 使用事务确保积分添加的原子性
+            with db_transaction.atomic():
+                points_service = PointsService(order.user, order.shop)
+                points_service.earn_points(
+                    points=points_to_award,
+                    points_type='earn_order',
+                    reference_id=str(order.id),
+                    notes=f'订单{order.order_number}消费获得积分'
+                )
+
+        except Exception as e:
+            # 记录错误但不影响支付流程
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"订单积分奖励失败: {str(e)}")
+
 
 class WechatPaymentService(PaymentService):
     """微信支付服务"""
@@ -236,6 +285,9 @@ class WechatPaymentService(PaymentService):
                 order.status = 'paid'
                 order.save()
 
+                # 订单支付成功后给予积分奖励
+                self._award_order_points(order)
+                
                 return True
             else:
                 transaction.status = 'failed'
@@ -484,6 +536,9 @@ class AlipayPaymentService(PaymentService):
             order.paid_at = timezone.now()
             order.status = 'paid'
             order.save()
+
+            # 订单支付成功后给予积分奖励
+            self._award_order_points(order)
 
             return True
 

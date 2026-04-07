@@ -109,6 +109,8 @@ class MemberRechargeSerializer(serializers.ModelSerializer):
 class UserMembershipSerializer(serializers.ModelSerializer):
     """用户会员信息序列化器"""
     membership_level_name = serializers.CharField(source='get_membership_level_display', read_only=True)
+    level_info = serializers.SerializerMethodField()
+    next_level_info = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -116,8 +118,67 @@ class UserMembershipSerializer(serializers.ModelSerializer):
             'id', 'username', 'membership_level', 'membership_level_name',
             'membership_number', 'membership_expiry', 'total_points',
             'available_points', 'used_points', 'total_consumption',
-            'consumption_count', 'referral_code'
+            'consumption_count', 'referral_code', 'level_info', 'next_level_info'
         ]
+
+    def get_level_info(self, obj):
+        """获取当前等级详细信息"""
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'tenant'):
+            return None
+
+        try:
+            from .models import MembershipLevelConfig
+            level_config = MembershipLevelConfig.objects.get(
+                shop=request.tenant,
+                level=obj.membership_level,
+                is_active=True
+            )
+            return {
+                'name': level_config.name,
+                'discount_rate': float(level_config.discount_rate),
+                'points_earn_rate': float(level_config.points_earn_rate),
+                'benefits': level_config.benefits,
+                'min_points': level_config.min_points
+            }
+        except Exception:
+            return None
+
+    def get_next_level_info(self, obj):
+        """获取下一等级信息"""
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'tenant'):
+            return None
+
+        try:
+            from .models import MembershipLevelConfig
+            # 获取所有等级配置，按积分排序
+            levels = MembershipLevelConfig.objects.filter(
+                shop=request.tenant,
+                is_active=True
+            ).order_by('min_points')
+
+            # 找到下一个等级（第一个min_points大于当前总积分的等级）
+            for level in levels:
+                if level.min_points > obj.total_points:
+                    points_needed = level.min_points - obj.total_points
+                    return {
+                        'level': level.level,
+                        'name': level.name,
+                        'min_points': level.min_points,
+                        'points_needed': points_needed,
+                        'discount_rate': float(level.discount_rate),
+                        'points_earn_rate': float(level.points_earn_rate),
+                        'benefits': level.benefits
+                    }
+
+            # 遍历完所有等级都没有找到，说明已经是最高等级
+            return None
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"获取下一等级信息失败: {str(e)}")
+            return None
 
 
 class RechargeRequestSerializer(serializers.Serializer):

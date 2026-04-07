@@ -1,9 +1,9 @@
-from apps.core.permissions import IsShopOwnerOrStaff
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import IsShopOwnerOrStaff
 from .models import Coupon, UserCoupon, CouponRule, Promotion
 from .serializers import (
     CouponSerializer, UserCouponSerializer, CouponRuleSerializer,
@@ -30,10 +30,17 @@ class UserCouponViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return UserCoupon.objects.filter(
+        queryset = UserCoupon.objects.filter(
             user=self.request.user,
             coupon__shop=self.request.tenant
         ).select_related('coupon')
+
+        # 支持按状态过滤
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        return queryset
 
     @action(detail=False, methods=['get'])
     def available(self, request):
@@ -136,7 +143,7 @@ def apply_coupon(request):
         order_items = []
 
         if order_id:
-            from apps.orders.models import Order, OrderItem
+            from apps.orders.models import Order
             try:
                 order = Order.objects.get(id=order_id, user=request.user)
                 order_amount = order.subtotal
@@ -148,7 +155,7 @@ def apply_coupon(request):
                 )
 
         elif cart_id:
-            from apps.orders.models import Cart, CartItem
+            from apps.orders.models import Cart
             try:
                 cart = Cart.objects.get(id=cart_id, user=request.user)
                 order_amount = cart.total_price
@@ -184,9 +191,13 @@ def available_coupons(request):
         is_active=True,
         valid_from__lte=timezone.now(),
         valid_until__gte=timezone.now()
-    ).exclude(
-        usercoupon__user=request.user if request.user.is_authenticated else None
     )
+
+    # 排除用户已领取的优惠券
+    if request.user.is_authenticated:
+        coupons = coupons.exclude(
+            user_coupons__user=request.user
+        )
 
     serializer = CouponSerializer(coupons, many=True)
     return Response(serializer.data)

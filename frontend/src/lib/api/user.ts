@@ -39,7 +39,7 @@ export const userApi = {
 
     // 签到
     signin() {
-        return apiClient.post('/users/signin-earn-points/');
+        return apiClient.post('/users/points/signin/');
     },
 
     // 获取订单列表（用于统计）

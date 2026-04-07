@@ -1,6 +1,5 @@
-from datetime import timezone
-
 from django.contrib.auth import login, logout
+from django.utils import timezone
 from rest_framework import status, generics, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -199,7 +198,7 @@ class MemberRechargeViewSet(ModelViewSet):
 @permission_classes([permissions.IsAuthenticated])
 def user_membership_info(request):
     """获取用户会员信息"""
-    serializer = UserMembershipSerializer(request.user)
+    serializer = UserMembershipSerializer(request.user, context={'request': request})
     return Response(serializer.data)
 
 

@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'django_tenants',
     'drf_spectacular',
+    'social_django',  # 第三方登录
 
     # 本地应用
     'apps.core',
@@ -126,6 +128,7 @@ TENANT_APPS = [
     'apps.payments',
     'apps.printing',
     'apps.pos',
+    'apps.promotions',
 ]
 
 INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in SHARED_APPS]
@@ -250,6 +253,8 @@ TENANT_LIMIT_SET_CALLS = True
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend',
+    'apps.users.auth_backends.WeixinOAuth2',  # 微信登录
+    'apps.users.auth_backends.AlipayOAuth2',  # 支付宝登录
 )
 
 # Guardian配置
@@ -261,3 +266,20 @@ FEIE_UKEY = config('FEIE_UKEY', default='')
 
 # 前端URL（用于生成二维码）
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+# ==================== 第三方登录配置 ====================
+# Social Auth 配置
+SOCIAL_AUTH_URL_NAMESPACE = 'social'
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/auth/callback/'
+SOCIAL_AUTH_LOGIN_ERROR_URL = '/auth/error/'
+
+# 微信登录配置
+SOCIAL_AUTH_WEIXIN_KEY = config('WEIXIN_APP_ID', default='')
+SOCIAL_AUTH_WEIXIN_SECRET = config('WEIXIN_APP_SECRET', default='')
+SOCIAL_AUTH_WEIXIN_SCOPE = 'snsapi_userinfo'  # snsapi_base(静默) 或 snsapi_userinfo(弹窗)
+
+# 支付宝登录配置
+SOCIAL_AUTH_ALIPAY_KEY = config('ALIPAY_APP_ID', default='')
+SOCIAL_AUTH_ALIPAY_SECRET = config('ALIPAY_PRIVATE_KEY', default='')
+SOCIAL_AUTH_ALIPAY_PUBLIC_KEY = config('ALIPAY_PUBLIC_KEY', default='')
+SOCIAL_AUTH_ALIPAY_SCOPE = 'auth_user'  # auth_base(静默) 或 auth_user(弹窗)

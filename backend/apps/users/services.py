@@ -81,7 +81,7 @@ class PointsService:
             self.user.save()
 
     def process_order_points(self, order):
-        """处理订单积分"""
+        """处理订单积分（根据会员等级计算倍率）"""
         # 获取消费获得积分规则
         try:
             rule = PointsRule.objects.get(
@@ -90,16 +90,33 @@ class PointsService:
                 is_active=True
             )
 
-            # 计算获得积分
-            points_rate = rule.config.get('points_rate', 0.1)  # 默认1元获得0.1积分
-            points = int(order.total_amount * Decimal(points_rate))
+            # 基础积分：每元获得的积分数
+            points_per_yuan = rule.config.get('points_per_yuan', 10)
+            base_points = int(float(order.total_amount) * points_per_yuan)
 
-            if points > 0:
+            if base_points <= 0:
+                return
+
+            # 获取会员等级配置，计算积分倍率
+            try:
+                level_config = MembershipLevelConfig.objects.get(
+                    shop=self.shop,
+                    level=self.user.membership_level,
+                    is_active=True
+                )
+                points_multiplier = float(level_config.points_earn_rate)
+            except MembershipLevelConfig.DoesNotExist:
+                points_multiplier = 1.0
+
+            # 最终积分 = 基础积分 × 会员倍率
+            final_points = int(base_points * points_multiplier)
+
+            if final_points > 0:
                 self.earn_points(
-                    points=points,
+                    points=final_points,
                     points_type='earn_order',
-                    reference_id=order.order_number,
-                    notes=f"订单消费获得积分"
+                    reference_id=str(order.id),
+                    notes=f"订单{order.order_number}消费获得积分（{points_multiplier}x倍率）"
                 )
 
         except PointsRule.DoesNotExist:

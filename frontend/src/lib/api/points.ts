@@ -10,12 +10,48 @@ export interface PointsLog {
     created_at: string;
 }
 
+export interface MembershipLevelInfo {
+    name: string;
+    discount_rate: number;
+    points_earn_rate: number;
+    benefits: {
+        description: string;
+        items: string[];
+        icon: string;
+        color: string;
+    };
+    min_points: number;
+}
+
+export interface NextLevelInfo {
+    level: string;
+    name: string;
+    min_points: number;
+    points_needed: number;
+    discount_rate: number;
+    points_earn_rate: number;
+    benefits: {
+        description: string;
+        items: string[];
+        icon: string;
+        color: string;
+    };
+}
+
 export interface MembershipInfo {
-    level_name: string;
-    available_points: number;
+    id: number;
+    username: string;
+    membership_level: string;
+    membership_level_name: string;
+    membership_number: string;
     total_points: number;
-    next_level_points: number;
-    membership_level: number;
+    available_points: number;
+    used_points: number;
+    total_consumption: number;
+    consumption_count: number;
+    referral_code: string;
+    level_info: MembershipLevelInfo | null;
+    next_level_info: NextLevelInfo | null;
 }
 
 export const pointsApi = {
