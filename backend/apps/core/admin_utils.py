@@ -32,6 +32,27 @@ class TenantAdminMixin:
     为租户管理员提供查看和编辑权限
     """
 
+    def get_queryset(self, request):
+        """根据用户角色过滤查询集"""
+        qs = super().get_queryset(request)
+
+        # 超级管理员可以看到所有数据
+        if request.user.is_superuser:
+            return qs
+
+        # 获取用户的租户
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            tenant = get_user_tenant(request.user)
+
+        # 如果模型有 shop 或 tenant 字段，进行过滤
+        if tenant and hasattr(qs.model, 'shop'):
+            return qs.filter(shop=tenant)
+        elif tenant and hasattr(qs.model, 'tenant'):
+            return qs.filter(tenant=tenant)
+
+        return qs
+
     def has_view_permission(self, request, obj=None):
         """控制查看权限"""
         if request.user.is_superuser:
@@ -50,6 +71,11 @@ class TenantAdminMixin:
                 is_active=True,
                 role__in=['owner', 'manager']
             ).exists()
+
+        # 如果没有租户上下文，但用户是 shop_owner 或 shop_staff 类型
+        # 允许他们访问 admin（会在具体对象级别进行过滤）
+        if request.user.user_type in ['shop_owner', 'shop_staff']:
+            return True
 
         return False
 
@@ -70,6 +96,11 @@ class TenantAdminMixin:
                 is_active=True,
                 role__in=['owner', 'manager']
             ).exists()
+
+        # 如果没有租户上下文，但用户是 shop_owner 或 shop_staff 类型
+        # 允许他们编辑（会在具体对象级别进行过滤）
+        if request.user.user_type in ['shop_owner', 'shop_staff']:
+            return True
 
         return False
 
@@ -93,6 +124,11 @@ class TenantAdminMixin:
                 is_active=True,
                 role__in=['owner', 'manager']
             ).exists()
+
+        # 如果没有租户上下文，但用户是 shop_owner 或 shop_staff 类型
+        # 允许他们添加（会在保存时进行租户关联）
+        if request.user.user_type in ['shop_owner', 'shop_staff']:
+            return True
 
         return False
 
