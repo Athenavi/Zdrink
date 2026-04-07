@@ -1,15 +1,18 @@
 """
 自定义第三方登录认证后端
 支持微信和支付宝OAuth2.0登录
-参考: social-auth-app-django, django-allauth
+
+注意：这些后端仅用于 social-auth 框架，不直接作为 Django AUTHENTICATION_BACKENDS 使用
+实际的第三方登录逻辑在 social_views.py 中实现
 """
+# 此文件保留作为参考，实际不使用
 from urllib.parse import urlencode
 
 import requests
 from django.contrib.auth import get_user_model
 from social_core.backends.oauth import BaseOAuth2
 
-from ..models import SocialAuth
+from .models import SocialAuth
 
 User = get_user_model()
 

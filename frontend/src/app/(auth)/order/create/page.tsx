@@ -1,17 +1,19 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import {useRouter} from 'next/navigation';
+import {useParams, useRouter} from 'next/navigation';
 import Image from 'next/image';
-import {Calendar, CreditCard, Phone, Truck, User, Utensils} from 'lucide-react';
+import {Calendar, ChevronRight, CreditCard, MapPin, Plus, ShoppingBag, Truck, Utensils} from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import Loading from '@/components/Loading';
 import {orderApi} from '@/lib/api/order';
+import {Address, addressApi} from '@/lib/api/address';
+import {shopApi} from '@/lib/api/shop';
 import {useCartStore} from '@/stores/cart';
 import {formatPrice, getImageUrl} from '@/utils';
 
 type OrderType = 'takeaway' | 'dine_in' | 'delivery';
-type PaymentMethod = 'wechat' | 'alipay' | 'cash';
+type PaymentMethod = 'wechat' | 'alipay';
 
 interface Table {
     id: number;
@@ -23,6 +25,7 @@ interface Table {
 
 export default function OrderCreatePage() {
     const router = useRouter();
+    const params = useParams();
     const cartStore = useCartStore();
 
     const [loading, setLoading] = useState(false);
@@ -34,10 +37,21 @@ export default function OrderCreatePage() {
     const [tableNumber, setTableNumber] = useState('');
     const [availableTables, setAvailableTables] = useState<Table[]>([]);
     const [cartItems, setCartItems] = useState<any[]>([]);
+    const [addresses, setAddresses] = useState<Address[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [deliveryFee, setDeliveryFee] = useState<number>(0); // 配送费（元）
 
     // 加载购物车数据
     useEffect(() => {
         loadCartData();
+        loadAddresses();
+        loadShopConfig();
+
+        // 从 localStorage 读取购物车页面选择的订单类型
+        const savedOrderType = localStorage.getItem('orderType');
+        if (savedOrderType && ['takeaway', 'dine_in', 'delivery'].includes(savedOrderType)) {
+            setOrderType(savedOrderType as OrderType);
+        }
     }, []);
 
     // 监听订单类型变化
@@ -75,6 +89,53 @@ export default function OrderCreatePage() {
         }
     };
 
+    const loadAddresses = async () => {
+        try {
+            const response = await addressApi.getAddresses();
+            const data = response.data;
+            if (Array.isArray(data)) {
+                setAddresses(data);
+                // 自动选择默认地址
+                const defaultAddress = data.find((addr: Address) => addr.is_default);
+                if (defaultAddress) {
+                    setSelectedAddressId(defaultAddress.id);
+                    setCustomerName(defaultAddress.name);
+                    setCustomerPhone(defaultAddress.phone);
+                }
+            } else if (data && Array.isArray(data.results)) {
+                setAddresses(data.results);
+                const defaultAddress = data.results.find((addr: Address) => addr.is_default);
+                if (defaultAddress) {
+                    setSelectedAddressId(defaultAddress.id);
+                    setCustomerName(defaultAddress.name);
+                    setCustomerPhone(defaultAddress.phone);
+                }
+            }
+        } catch (error) {
+            console.error('加载地址失败:', error);
+        }
+    };
+
+    const loadShopConfig = async () => {
+        try {
+            // 从 localStorage 获取 shop_id，或者从 URL 参数获取
+            const shopId = localStorage.getItem('currentShopId') || params.shopId;
+            if (shopId) {
+                const response = await shopApi.getShop(parseInt(shopId.toString()));
+                const shop = response.data;
+                // 设置配送费（后端返回的是 Decimal 类型，单位是元）
+                setDeliveryFee(parseFloat(shop.delivery_fee?.toString() || '6.9'));
+            } else {
+                // 默认配送费 6.9 元
+                setDeliveryFee(6.9);
+            }
+        } catch (error) {
+            console.error('加载店铺配置失败:', error);
+            // 使用默认值
+            setDeliveryFee(6.9);
+        }
+    };
+
     const loadAvailableTables = async () => {
         try {
             // TODO: 调用桌台 API
@@ -89,8 +150,19 @@ export default function OrderCreatePage() {
     };
 
     const totalAmount = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-    const deliveryFee = orderType === 'delivery' ? 500 : 0;
-    const finalTotal = totalAmount + deliveryFee;
+    // 外卖订单才计算配送费
+    const actualDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
+    const finalTotal = totalAmount + actualDeliveryFee;
+
+    const handleSelectAddress = (address: Address) => {
+        setSelectedAddressId(address.id);
+        setCustomerName(address.name);
+        setCustomerPhone(address.phone);
+    };
+
+    const handleAddAddress = () => {
+        router.push('/address/edit');
+    };
 
     const handleSubmit = async () => {
         // 验证表单
@@ -114,22 +186,48 @@ export default function OrderCreatePage() {
             return;
         }
 
+        if (orderType === 'delivery') {
+            // 外卖订单必须选择地址
+            if (!selectedAddressId) {
+                alert('请选择收货地址');
+                return;
+            }
+
+            // 获取选中的地址信息
+            const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+            if (!selectedAddress) {
+                alert('请选择有效的收货地址');
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const orderData: any = {
                 order_type: orderType,
                 customer_name: customerName,
                 customer_phone: customerPhone,
-                payment_method: paymentMethod,
                 cart_id: cartStore.cartInfo?.id
             };
 
+            // 堂食订单添加桌台号
             if (orderType === 'dine_in') {
                 orderData.table_number = tableNumber;
             }
 
+            // 自取订单添加取餐时间
             if (orderType === 'takeaway' && pickupTime) {
                 orderData.pickup_time = new Date(pickupTime).toISOString();
+            }
+
+            // 外卖订单添加配送地址
+            if (orderType === 'delivery') {
+                const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+                if (selectedAddress) {
+                    orderData.delivery_address = `${selectedAddress.province}${selectedAddress.city}${selectedAddress.district}${selectedAddress.detail}`;
+                    // 也可以保存期望配送时间
+                    orderData.delivery_time = new Date().toISOString();
+                }
             }
 
             const response = await orderApi.createOrder(orderData);
@@ -138,15 +236,18 @@ export default function OrderCreatePage() {
             // 清空购物车
             await cartStore.clearCart();
 
-            // 根据支付方式决定跳转
-            if (['wechat', 'alipay'].includes(paymentMethod)) {
-                router.push(`/order/${response.data.id}/pay?method=${paymentMethod}`);
-            } else {
-                router.push(`/order/${response.data.id}`);
-            }
+            // 跳转到支付页面
+            router.push(`/order/${response.data.id}/pay?method=${paymentMethod}`);
         } catch (error: any) {
             console.error('创建订单失败:', error);
-            alert(error.response?.data?.message || '创建订单失败，请重试');
+            // 显示详细错误信息
+            const errorMsg = error.response?.data;
+            if (typeof errorMsg === 'object') {
+                const messages = Object.values(errorMsg).flat().join('\n');
+                alert(`创建订单失败：\n${messages}`);
+            } else {
+                alert(errorMsg || '创建订单失败，请重试');
+            }
         } finally {
             setLoading(false);
         }
@@ -160,6 +261,71 @@ export default function OrderCreatePage() {
             <div className="bg-white m-3 mt-3 rounded-xl p-4 space-y-4">
                 <h2 className="text-base font-semibold mb-3">取餐信息</h2>
 
+                {/* 收货地址选择 */}
+                {addresses.length > 0 ? (
+                    <div>
+                        <label className="text-sm text-gray-600 mb-2 block">收货地址</label>
+                        <div className="space-y-2">
+                            {addresses.map((address) => (
+                                <div
+                                    key={address.id}
+                                    onClick={() => handleSelectAddress(address)}
+                                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                                        selectedAddressId === address.id
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <MapPin className="w-4 h-4 text-gray-500"/>
+                                                <span className="font-medium text-sm">{address.name}</span>
+                                                <span className="text-sm text-gray-600 ml-2">{address.phone}</span>
+                                                {address.is_default && (
+                                                    <span
+                                                        className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded">
+                                                        默认
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-start gap-1 text-xs text-gray-600">
+                                                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
+                                                <span className="break-words">
+                                                    {address.province}{address.city}{address.district}{address.detail}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0"/>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={handleAddAddress}
+                            className="mt-2 w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Plus className="w-4 h-4"/>
+                            <span className="text-sm">添加新地址</span>
+                        </button>
+                    </div>
+                ) : (
+                    <div>
+                        <label className="text-sm text-gray-600 mb-2 block">收货地址</label>
+                        <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center">
+                            <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3"/>
+                            <p className="text-gray-500 text-sm mb-3">暂无收货地址</p>
+                            <button
+                                onClick={handleAddAddress}
+                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm inline-flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4"/>
+                                <span>添加收货地址</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* 订单类型 */}
                 <div>
                     <label className="text-sm text-gray-600 mb-2 block">订单类型</label>
@@ -172,8 +338,8 @@ export default function OrderCreatePage() {
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                         >
-                            <Truck className="w-4 h-4"/>
-                            <span>外卖</span>
+                            <ShoppingBag className="w-4 h-4"/>
+                            <span>自取</span>
                         </button>
                         <button
                             onClick={() => setOrderType('dine_in')}
@@ -185,6 +351,17 @@ export default function OrderCreatePage() {
                         >
                             <Utensils className="w-4 h-4"/>
                             <span>堂食</span>
+                        </button>
+                        <button
+                            onClick={() => setOrderType('delivery')}
+                            className={`flex-1 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                                orderType === 'delivery'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                            <Truck className="w-4 h-4"/>
+                            <span>外卖</span>
                         </button>
                     </div>
                 </div>
@@ -239,50 +416,6 @@ export default function OrderCreatePage() {
                             <CreditCard className="w-5 h-5 text-blue-500"/>
                             <span className="flex-1">支付宝</span>
                         </label>
-                        <label
-                            className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                            <input
-                                type="radio"
-                                name="payment"
-                                value="cash"
-                                checked={paymentMethod === 'cash'}
-                                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                                className="w-4 h-4 text-blue-500"
-                            />
-                            <span className="flex-1">现金支付</span>
-                        </label>
-                    </div>
-                </div>
-
-                {/* 顾客姓名 */}
-                <div>
-                    <label className="text-sm text-gray-600 mb-2 block">顾客姓名</label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"/>
-                        <input
-                            type="text"
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="请输入顾客姓名"
-                            maxLength={20}
-                            className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                        />
-                    </div>
-                </div>
-
-                {/* 联系电话 */}
-                <div>
-                    <label className="text-sm text-gray-600 mb-2 block">联系电话</label>
-                    <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"/>
-                        <input
-                            type="tel"
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
-                            placeholder="请输入联系电话"
-                            maxLength={11}
-                            className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                        />
                     </div>
                 </div>
 
@@ -353,10 +486,10 @@ export default function OrderCreatePage() {
                         <span className="text-gray-500">商品总额</span>
                         <span className="text-gray-900">{formatPrice(totalAmount)}</span>
                     </div>
-                    {deliveryFee > 0 && (
+                    {actualDeliveryFee > 0 && (
                         <div className="flex justify-between">
                             <span className="text-gray-500">配送费</span>
-                            <span className="text-gray-900">{formatPrice(deliveryFee)}</span>
+                            <span className="text-gray-900">{formatPrice(actualDeliveryFee)}</span>
                         </div>
                     )}
                     <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold text-base">

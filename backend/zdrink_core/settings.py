@@ -253,8 +253,6 @@ TENANT_LIMIT_SET_CALLS = True
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend',
-    'apps.users.auth_backends.WeixinOAuth2',  # 微信登录
-    'apps.users.auth_backends.AlipayOAuth2',  # 支付宝登录
 )
 
 # Guardian配置

@@ -162,6 +162,9 @@ class OrderViewSet(ModelViewSet):
         if self.action in ['create', 'my_orders', 'cancel']:
             # 创建订单、查看我的订单、取消订单只需要认证
             return [permissions.IsAuthenticated()]
+        elif self.action == 'retrieve':
+            # 查看订单详情：允许认证用户查看（会在 get_queryset 中过滤）
+            return [permissions.IsAuthenticated()]
         # 其他操作需要店铺员工权限
         return super().get_permissions()
 
