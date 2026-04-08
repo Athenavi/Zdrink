@@ -111,6 +111,7 @@ class UserMembershipSerializer(serializers.ModelSerializer):
     membership_level_name = serializers.CharField(source='get_membership_level_display', read_only=True)
     level_info = serializers.SerializerMethodField()
     next_level_info = serializers.SerializerMethodField()
+    has_signed_in_today = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -118,7 +119,8 @@ class UserMembershipSerializer(serializers.ModelSerializer):
             'id', 'username', 'membership_level', 'membership_level_name',
             'membership_number', 'membership_expiry', 'total_points',
             'available_points', 'used_points', 'total_consumption',
-            'consumption_count', 'referral_code', 'level_info', 'next_level_info'
+            'consumption_count', 'referral_code', 'level_info', 'next_level_info',
+            'has_signed_in_today'
         ]
 
     def get_level_info(self, obj):
@@ -179,6 +181,31 @@ class UserMembershipSerializer(serializers.ModelSerializer):
             logger = logging.getLogger(__name__)
             logger.error(f"获取下一等级信息失败: {str(e)}")
             return None
+
+    def get_has_signed_in_today(self, obj):
+        """检查今日是否已签到"""
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'tenant'):
+            return False
+
+        try:
+            from django.utils import timezone
+            from .models import PointsLog
+
+            today = timezone.now().date()
+            today_log = PointsLog.objects.filter(
+                user=obj,
+                shop=request.tenant,
+                points_type='earn_signin',
+                created_at__date=today
+            ).exists()
+
+            return today_log
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"检查签到状态失败: {str(e)}")
+            return False
 
 
 class RechargeRequestSerializer(serializers.Serializer):

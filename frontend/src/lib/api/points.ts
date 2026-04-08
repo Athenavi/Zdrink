@@ -52,6 +52,7 @@ export interface MembershipInfo {
     referral_code: string;
     level_info: MembershipLevelInfo | null;
     next_level_info: NextLevelInfo | null;
+    has_signed_in_today: boolean;
 }
 
 export const pointsApi = {

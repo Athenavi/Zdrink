@@ -26,4 +26,7 @@ pycryptodome
 qrcode[pil]
 # 第三方登录
 social-auth-app-django
-social-auth-core
+# 打印相关
+escpos
+reportlab
+django-qr-code

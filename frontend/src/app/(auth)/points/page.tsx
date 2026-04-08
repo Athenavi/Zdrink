@@ -72,13 +72,25 @@ export default function PointsPage() {
     };
 
     const handleSignin = async () => {
+        // 如果已经签到过，提示用户
+        if (membershipInfo?.has_signed_in_today) {
+            alert('今天已经签到过了');
+            return;
+        }
+
         setSigninLoading(true);
         try {
             const response = await pointsApi.signinEarnPoints();
             alert(`签到成功！获得${response.data.points_earned}积分`);
             await Promise.all([loadMembershipInfo(), loadPointsLogs(1)]);
         } catch (error: any) {
-            alert(error.response?.data?.error || '签到失败');
+            // 如果是 400 错误（已签到），更新状态
+            if (error.response?.status === 400) {
+                alert(error.response?.data?.error || '今天已经签到过了');
+                await Promise.all([loadMembershipInfo(), loadPointsLogs(1)]);
+            } else {
+                alert(error.response?.data?.error || '签到失败');
+            }
         } finally {
             setSigninLoading(false);
         }
@@ -136,13 +148,25 @@ export default function PointsPage() {
                 <div className="grid grid-cols-3 gap-4">
                     <button
                         onClick={handleSignin}
-                        disabled={signinLoading}
-                        className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                        disabled={signinLoading || membershipInfo?.has_signed_in_today}
+                        className={`flex flex-col items-center gap-2 py-3 rounded-lg transition-colors ${
+                            membershipInfo?.has_signed_in_today
+                                ? 'bg-gray-50 cursor-not-allowed'
+                                : 'hover:bg-gray-50'
+                        } disabled:opacity-50`}
                     >
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Calendar className="w-6 h-6 text-blue-500"/>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            membershipInfo?.has_signed_in_today ? 'bg-gray-200' : 'bg-blue-100'
+                        }`}>
+                            <Calendar className={`w-6 h-6 ${
+                                membershipInfo?.has_signed_in_today ? 'text-gray-400' : 'text-blue-500'
+                            }`}/>
                         </div>
-                        <span className="text-sm text-gray-700">{signinLoading ? '签到中...' : '每日签到'}</span>
+                        <span className={`text-sm ${
+                            membershipInfo?.has_signed_in_today ? 'text-gray-400' : 'text-gray-700'
+                        }`}>
+                            {signinLoading ? '签到中...' : membershipInfo?.has_signed_in_today ? '今日已签到' : '每日签到'}
+                        </span>
                     </button>
 
                     <button

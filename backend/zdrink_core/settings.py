@@ -58,8 +58,8 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'apps.core.middleware.DisableCSRFMiddleware',  # 添加自定义中间件，禁用 API 的 CSRF
     'django.middleware.common.CommonMiddleware',
+    'apps.core.middleware.DisableCSRFMiddleware',  # 添加自定义中间件，禁用 API 的 CSRF（必须在 CsrfViewMiddleware 之前）
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

@@ -37,9 +37,13 @@ apiClient.interceptors.request.use(
         // 处理 URL 路径，添加 /api 前缀
         config.url = processUrl(config.url || '');
 
-        // 从 localStorage 获取 token（客户端）
+        // 仅从 cookie 获取 token（与 middleware 保持一致）
         if (typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
+            const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1];
+
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -78,8 +82,9 @@ apiClient.interceptors.response.use(
                 case 401:
                     // 未授权，清除 token 并跳转到登录页
                     if (typeof window !== 'undefined') {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('refresh_token');
+                        // 从 cookie 清除 token
+                        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                        document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
                         // 如果当前不在登录页，跳转到登录页
                         if (!window.location.pathname.includes('/login')) {

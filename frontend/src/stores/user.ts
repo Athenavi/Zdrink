@@ -36,12 +36,10 @@ export const useUserStore = create<UserState>()(
                     console.log('登录成功，保存 token');
                     console.log('用户信息:', user);
 
-                    // 保存 token（同时设置 localStorage 和 cookie）
+                    // 仅使用 cookie 存储 token（与 middleware 保持一致）
                     set({token: access, isLoggedIn: true, userInfo: user});
-                    localStorage.setItem('token', access);
-                    localStorage.setItem('refresh_token', refresh);
 
-                    // 设置 cookie 供 Middleware 使用
+                    // 设置 cookie 供 Middleware 和 API 客户端使用
                     document.cookie = `token=${access}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 天
                     document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 天
 
@@ -92,8 +90,6 @@ export const useUserStore = create<UserState>()(
             logout: () => {
                 console.log('退出登录');
                 set({userInfo: null, token: null, isLoggedIn: false});
-                localStorage.removeItem('token');
-                localStorage.removeItem('refresh_token');
 
                 // 清除 cookie
                 document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -102,7 +98,11 @@ export const useUserStore = create<UserState>()(
 
             // 初始化用户信息
             initUser: async () => {
-                const token = get().token || localStorage.getItem('token');
+                // 仅从 cookie 获取 token
+                const token = get().token || document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('token='))
+                    ?.split('=')[1];
 
                 if (token) {
                     try {
@@ -125,12 +125,14 @@ export const useUserStore = create<UserState>()(
             // 设置 token
             setToken: (token: string) => {
                 set({token, isLoggedIn: true});
-                localStorage.setItem('token', token);
+                // 仅使用 cookie 存储
+                document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
             },
         }),
         {
             name: 'user-storage', // localStorage 中的 key
-            partialize: (state) => ({token: state.token, isLoggedIn: state.isLoggedIn}), // 只持久化 token 和 isLoggedIn
+            // 由于 token 存储在 cookie 中，这里只持久化登录状态
+            partialize: (state) => ({isLoggedIn: state.isLoggedIn}),
         }
     )
 );

@@ -9,9 +9,14 @@ import {useUserStore} from '@/stores/user';
 import {userApi} from '@/lib/api/user';
 
 interface MembershipInfo {
-    level_name: string;
+    membership_level_name: string;
     available_points: number;
-    next_level_points: number;
+    total_points: number;
+    next_level_info?: {
+        points_needed: number;
+        min_points: number;
+    } | null;
+    has_signed_in_today: boolean;
 }
 
 export default function ProfilePage() {
@@ -78,13 +83,25 @@ export default function ProfilePage() {
     };
 
     const handleSignin = async () => {
+        // 如果已经签到过，提示用户
+        if (membershipInfo?.has_signed_in_today) {
+            alert('今天已经签到过了');
+            return;
+        }
+
         setSigninLoading(true);
         try {
             const response = await userApi.signin();
             alert(`签到成功！获得${response.data.points_earned}积分`);
             await loadMembershipInfo();
         } catch (error: any) {
-            alert(error.response?.data?.error || '签到失败');
+            // 如果是 400 错误（已签到），更新状态
+            if (error.response?.status === 400) {
+                alert(error.response?.data?.error || '今天已经签到过了');
+                await loadMembershipInfo();
+            } else {
+                alert(error.response?.data?.error || '签到失败');
+            }
         } finally {
             setSigninLoading(false);
         }
@@ -297,10 +314,16 @@ export default function ProfilePage() {
                 <div className="mx-3 mt-6">
                     <button
                         onClick={handleSignin}
-                        disabled={signinLoading}
-                        className="w-full py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={signinLoading || membershipInfo?.has_signed_in_today}
+                        className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                            membershipInfo?.has_signed_in_today
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : signinLoading
+                                    ? 'bg-blue-300 text-white opacity-50 cursor-not-allowed'
+                                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
                     >
-                        {signinLoading ? '签到中...' : '每日签到'}
+                        {signinLoading ? '签到中...' : membershipInfo?.has_signed_in_today ? '今日已签到 ✓' : '每日签到'}
                     </button>
                 </div>
             )}
