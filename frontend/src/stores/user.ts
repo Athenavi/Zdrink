@@ -96,11 +96,8 @@ export const useUserStore = create<UserState>()(
 
             // 初始化用户信息
             initUser: async () => {
-                // 仅从 cookie 获取 token
-                const token = get().token || document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('token='))
-                    ?.split('=')[1];
+                // 从 Zustand store 获取 token（由 persist 从 localStorage 恢复）
+                const token = get().token;
 
                 if (token) {
                     try {

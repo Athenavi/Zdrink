@@ -38,19 +38,11 @@ apiClient.interceptors.request.use(
         // 处理 URL 路径，添加 /api 前缀
         config.url = processUrl(config.url || '');
 
-        // 从 Zustand store 获取 token（优先），其次从 cookie 获取
-        // 注意：token cookie 是 HttpOnly 的，无法通过 document.cookie 读取
+        // 从 Zustand store 获取 token
+        // 注意：token 是通过 HttpOnly cookie 设置的，前端无法通过 document.cookie 读取，
+        // 因此依赖 Zustand persist 从 localStorage 恢复 token
         if (typeof window !== 'undefined') {
-            // 优先从 Zustand store（运行时内存）获取 token
-            let token = useUserStore.getState().token || '';
-
-            if (!token) {
-                // fallback 到 cookie（SSR 场景等 store 未初始化时）
-                token = document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('token='))
-                    ?.split('=')[1] || '';
-            }
+            const token = useUserStore.getState().token || '';
 
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
