@@ -149,12 +149,35 @@ class ShopSettingsView(generics.RetrieveUpdateAPIView):
             return False
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 @permission_classes([permissions.IsAuthenticated])
 def get_current_shop(request):
-    """获取当前用户关联的店铺"""
+    """获取或更新当前用户关联的店铺"""
     user = request.user
 
+    if request.method == 'PUT':
+        # 使用当前租户作为要更新的店铺
+        shop = request.tenant
+        if not shop:
+            return Response({'error': '未找到当前店铺'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 验证权限
+        if user.user_type != 'super_admin':
+            exists = ShopStaff.objects.filter(
+                user=user, shop=shop, is_active=True
+            ).exists()
+            if not exists:
+                return Response(
+                    {'error': '没有权限修改该店铺'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        serializer = ShopSerializer(shop, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    # GET 逻辑
     if user.user_type == 'super_admin':
         shops = Shop.objects.all()
     else:

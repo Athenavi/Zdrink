@@ -121,7 +121,10 @@ function ProductsContent() {
     };
 
     const handleAddToCart = async (product: Product, quantity: number = 1) => {
-        await cartStore.addToCart(product.id, quantity);
+        await cartStore.addToCart({
+            product: product.id,
+            quantity: quantity
+        });
     };
 
     const getSortedLabel = () => {
@@ -199,9 +202,15 @@ function ProductsContent() {
                     {products.map((product) => (
                         <ProductCard
                             key={product.id}
-                            product={product}
+                            id={product.id}
+                            name={product.name}
+                            description={product.description}
+                            price={product.price}
+                            originalPrice={product.original_price}
+                            image={product.image}
+                            isAvailable={product.is_available}
                             onClick={() => handleProductClick(product.id)}
-                            onAddToCart={(quantity) => handleAddToCart(product, quantity)}
+                            onAddToCart={(productId) => handleAddToCart(product, productId)}
                         />
                     ))}
                 </div>
