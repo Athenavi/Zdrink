@@ -13,9 +13,11 @@ class DisableCSRFMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # 仅对支付回调端点禁用 CSRF（这些端点由第三方支付平台直接调用，不支持 CSRF token）
-        CSRF_EXEMPT_PATHS = ['/api/payments/callback/']
-        if any(request.path.startswith(path) for path in CSRF_EXEMPT_PATHS):
+        # 对 /api/ 开头的请求禁用 CSRF 验证
+        # 因为 API 使用 JWT 认证（Authorization: Bearer <token>），
+        # 浏览器不会自动附加 Bearer token，CSRF 攻击无法利用 cookie 中的 token，
+        # 因此 CSRF 保护是不必要的
+        if request.path.startswith('/api/'):
             setattr(request, '_dont_enforce_csrf_checks', True)
 
         response = self.get_response(request)

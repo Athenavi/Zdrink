@@ -218,28 +218,30 @@ function LoginContent() {
         }
     };
 
-    // 微信登录
-    const handleWeixinLogin = () => {
-        if (!process.env.NEXT_PUBLIC_WEIXIN_APP_ID) {
-            setError('微信登录未配置（缺少 NEXT_PUBLIC_WEIXIN_APP_ID）');
-            return;
+    // 微信登录 — 通过后端 API 获取授权 URL（确保 state 被后端正确记录）
+    const handleWeixinLogin = async () => {
+        try {
+            const response = await apiClient.get('/users/social/weixin/login/', {
+                params: {platform: 'pc', redirect_uri: `${window.location.origin}/auth/callback/weixin`}
+            });
+            const {auth_url} = response.data;
+            window.location.href = auth_url;
+        } catch (err: any) {
+            setError(err.response?.data?.error || '微信登录初始化失败');
         }
-        const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/weixin`);
-        const randomState = Math.random().toString(36).substring(2, 15);
-        sessionStorage.setItem('oauth_state', randomState);
-        const authUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${process.env.NEXT_PUBLIC_WEIXIN_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=${randomState}#wechat_redirect`;
-        window.location.href = authUrl;
     };
 
-    // 支付宝登录
-    const handleAlipayLogin = () => {
-        if (!process.env.NEXT_PUBLIC_ALIPAY_APP_ID) {
-            setError('支付宝登录未配置（缺少 NEXT_PUBLIC_ALIPAY_APP_ID）');
-            return;
+    // 支付宝登录 — 通过后端 API 获取授权 URL
+    const handleAlipayLogin = async () => {
+        try {
+            const response = await apiClient.get('/users/social/alipay/login/', {
+                params: {redirect_uri: `${window.location.origin}/auth/callback/alipay`}
+            });
+            const {auth_url} = response.data;
+            window.location.href = auth_url;
+        } catch (err: any) {
+            setError(err.response?.data?.error || '支付宝登录初始化失败');
         }
-        const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/alipay`);
-        const authUrl = `https://openauth.alipay.com/oauth2/publicAppAuthorize.htm?app_id=${process.env.NEXT_PUBLIC_ALIPAY_APP_ID}&scope=auth_user&redirect_uri=${redirectUri}`;
-        window.location.href = authUrl;
     };
 
     return (

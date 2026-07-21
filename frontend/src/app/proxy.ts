@@ -1,17 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
 
-function decodeJwtPayload(token: string): any {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-        return JSON.parse(atob(padded));
-    } catch {
-        return null;
-    }
-}
-
 export async function middleware(req: NextRequest) {
     const host = req.headers.get('host') || '';
     const {pathname} = req.nextUrl;
@@ -23,10 +11,9 @@ export async function middleware(req: NextRequest) {
         ? process.env.NEXT_PUBLIC_DEFAULT_TENANT || 'default'
         : subdomain;
 
-    // 2. 认证检查 - 从 cookie 读取 token（localStorage 无法在 middleware 中访问）
+    // 2. 认证检查 - 仅检查 cookie 中是否有 token（不解析 JWT payload，因为无法在前端验证签名）
     const token = req.cookies.get('token')?.value;
     const isAuthenticated = !!token;
-    const decodedToken = token ? decodeJwtPayload(token) : null;
 
     const isAuthPage = pathname.startsWith('/(auth)') || pathname === '/login';
     const isPublicRoute = ['/home', '/products', '/about', '/'].some(p => pathname === p || pathname.startsWith(p + '/'));
@@ -34,7 +21,6 @@ export async function middleware(req: NextRequest) {
     // 3. 设置请求头
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('x-tenant', tenant || '');
-    requestHeaders.set('x-user-id', decodedToken?.sub || '');
 
     // 4. 响应初始化
     let response = NextResponse.next({
@@ -75,37 +61,11 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/home', req.url));
     }
 
-    // 7. 角色权限检查（可选）
-    if (isProtectedRoute && isAuthenticated) {
-        const userRole = decodedToken?.role as string;
-
-        // POS 和打印管理仅限管理员或收银员
-        const adminRoutes = ['/pos', '/printing', '/admin'];
-        const isAdminRoute = adminRoutes.some(p => pathname.startsWith(p));
-
-        if (isAdminRoute && userRole !== 'admin' && userRole !== 'cashier') {
-            // 无权访问，重定向到首页或错误页
-            return NextResponse.redirect(new URL('/home', req.url));
-        }
-    }
-
-    // 8. Token 刷新逻辑（如果 token 快过期）
-    if (decodedToken && decodedToken.exp) {
-        const now = Date.now() / 1000;
-        const expiresIn = Number(decodedToken.exp) - now;
-
-        // 如果剩余时间少于 1 小时，刷新 token
-        if (expiresIn < 3600) {
-            // 这里可以调用 API 刷新 token
-            // 具体实现取决于后端 API
-        }
-    }
-
-    // 9. 记录访问日志（仅在开发环境且是重要路由时）
+    // 7. 记录访问日志（仅在开发环境且是重要路由时）
     if (process.env.NODE_ENV === 'development') {
         const importantRoutes = ['/home', '/login', '/profile', '/pos', '/printing', '/cart'];
         if (importantRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
-            console.log(`[Middleware] ${pathname} | Tenant: ${tenant} | User: ${decodedToken?.sub || 'Anonymous'}`);
+            console.log(`[Middleware] ${pathname} | Tenant: ${tenant} | Authenticated: ${isAuthenticated}`);
         }
     }
 
