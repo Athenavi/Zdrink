@@ -108,6 +108,7 @@ SHARED_APPS = [
 
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # refresh token 黑名单（跨租户共享）
     'corsheaders',
     'django_filters',
     'django_extensions',
