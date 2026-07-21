@@ -191,6 +191,8 @@ class SocialCallbackView(APIView):
 
         if social_auth:
             user = social_auth.user
+            if not user.is_active:
+                raise Exception("该账号已被停用")
             # 更新额外数据
             social_auth.extra_data = userinfo_data
             social_auth.save(update_fields=['extra_data'])
@@ -206,6 +208,8 @@ class SocialCallbackView(APIView):
                     social_auth_by_unionid.openid = openid
                     social_auth_by_unionid.save(update_fields=['openid'])
                     user = social_auth_by_unionid.user
+                    if not user.is_active:
+                        raise Exception("该账号已被停用")
                 else:
                     user = self._create_user_from_weixin(userinfo_data)
                     is_new = True
@@ -295,6 +299,8 @@ class SocialCallbackView(APIView):
 
         if social_auth:
             user = social_auth.user
+            if not user.is_active:
+                raise Exception("该账号已被停用")
             social_auth.extra_data = token_data
             social_auth.save(update_fields=['extra_data'])
         else:

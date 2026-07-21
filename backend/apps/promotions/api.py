@@ -1,3 +1,4 @@
+from django.db.models import F
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -49,6 +50,8 @@ class UserCouponViewSet(ModelViewSet):
 
         user_coupons = self.get_queryset().filter(
             status='available',
+            coupon__is_active=True,
+            coupon__valid_from__lte=timezone.now(),
             coupon__valid_until__gte=timezone.now()
         )
         serializer = self.get_serializer(user_coupons, many=True)
@@ -189,6 +192,7 @@ def available_coupons(request):
     coupons = Coupon.objects.filter(
         shop=request.tenant,
         is_active=True,
+        used_quantity__lt=F('total_quantity'),
         valid_from__lte=timezone.now(),
         valid_until__gte=timezone.now()
     )

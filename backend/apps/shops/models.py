@@ -204,6 +204,7 @@ class Table(models.Model):
         """获取当前订单"""
         from apps.orders.models import Order
         return Order.objects.filter(
-            table=self,
+            table_number=self.table_number,
+            shop=self.shop,
             status__in=['pending', 'paid', 'confirmed', 'preparing']
         ).first()

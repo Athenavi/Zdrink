@@ -7,7 +7,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, filters, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
 
 from .models import (
     Category, Product, Specification, ProductSKU, InventoryLog
@@ -279,7 +278,7 @@ def public_products(request):
     # 过滤条件
     category_id = request.GET.get('category_id')
     if category_id:
-        products = products.filter(category_id=category_id)
+        products = products.filter(category_id=category_id, category__is_active=True)
 
     search = request.GET.get('search')
     if search:

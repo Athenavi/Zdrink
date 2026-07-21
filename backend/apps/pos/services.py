@@ -179,6 +179,9 @@ class POSService:
                 try:
                     merge_order = Order.objects.get(id=order_id, shop=self.shop)
 
+                    if merge_order.status not in ['pending', 'paid', 'confirmed', 'preparing']:
+                        continue
+
                     # 移动所有商品到主订单
                     for item in merge_order.items.all():
                         item.order = main_order
@@ -289,7 +292,6 @@ class TableManagementService:
     def get_table_status(self):
         """获取所有桌台状态"""
         from .models import Table
-        from apps.orders.models import Order
 
         tables = Table.objects.filter(shop=self.shop, is_active=True)
         table_status = []
@@ -323,7 +325,7 @@ class TableManagementService:
 
             if order_id:
                 order = Order.objects.get(id=order_id, shop=self.shop)
-                order.table = table
+                order.table_number = table.table_number
                 order.save()
 
             table.save()

@@ -1,12 +1,12 @@
 import uuid
 
-from apps.core.permissions import IsShopOwnerOrStaff
 from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import IsShopOwnerOrStaff
 from .models import Printer, PrintTemplate, PrintTask, PrintLog
 from .serializers import (
     PrinterSerializer, PrintTemplateSerializer, PrintTaskSerializer,
@@ -196,7 +196,7 @@ def print_order(request):
 
         # 获取打印机
         try:
-            printer = Printer.objects.get(id=printer_id, shop=request.tenant)
+            printer = Printer.objects.get(id=printer_id, shop=request.tenant, is_active=True)
         except Printer.DoesNotExist:
             return Response(
                 {'error': '打印机不存在'},
@@ -219,6 +219,12 @@ def print_order(request):
                 is_default=True,
                 is_active=True
             ).first()
+
+        if not template:
+            return Response(
+                {'error': '未找到默认打印模板，请先配置模板'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         print_service = PrintServiceFactory.get_service(printer)
         results = []

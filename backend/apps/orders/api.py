@@ -47,19 +47,46 @@ class CartViewSet(ModelViewSet):
 
             try:
                 with transaction.atomic():
+                    product = Product.objects.get(
+                        id=serializer.validated_data['product_id'],
+                        status='active',
+                        shop=self.request.tenant
+                    )
+
+                    sku = None
+                    if serializer.validated_data.get('sku_id'):
+                        sku = ProductSKU.objects.get(
+                            id=serializer.validated_data['sku_id'],
+                            product=product,
+                            is_active=True
+                        )
+
+                    requested_qty = serializer.validated_data['quantity']
+                    if sku and sku.stock_quantity < requested_qty:
+                        return Response(
+                            {'error': '库存不足'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
                     cart_item, created = CartItem.objects.get_or_create(
                         cart=cart,
-                        product_id=serializer.validated_data['product_id'],
-                        sku_id=serializer.validated_data.get('sku_id'),
+                        product=product,
+                        sku=sku,
                         defaults={
-                            'quantity': serializer.validated_data['quantity'],
-                            'unit_price': self._get_unit_price(serializer.validated_data),
+                            'quantity': requested_qty,
+                            'unit_price': sku.price if sku else product.base_price,
                             'customization': serializer.validated_data.get('customization', '')
                         }
                     )
 
                     if not created:
-                        cart_item.quantity += serializer.validated_data['quantity']
+                        new_qty = cart_item.quantity + requested_qty
+                        if sku and sku.stock_quantity < new_qty:
+                            return Response(
+                                {'error': '库存不足'},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        cart_item.quantity = new_qty
                         cart_item.save()
 
                     # 添加属性选项
@@ -73,14 +100,6 @@ class CartViewSet(ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def _get_unit_price(self, data):
-        product = Product.objects.get(id=data['product_id'])
-
-        if data.get('sku_id'):
-            sku = ProductSKU.objects.get(id=data['sku_id'])
-            return sku.price
-        else:
-            return product.base_price
 
     @action(detail=False, methods=['post'])
     def clear(self, request):
@@ -338,7 +357,8 @@ class OrderViewSet(ModelViewSet):
         if start_date:
             orders = orders.filter(created_at__gte=start_date)
         if end_date:
-            orders = orders.filter(created_at__lte=end_date)
+            end_datetime = timezone.datetime.strptime(end_date, '%Y-%m-%d') + timezone.timedelta(days=1)
+            orders = orders.filter(created_at__lt=end_datetime)
 
         report_data = orders.extra(
             {'date': "DATE(created_at)"}

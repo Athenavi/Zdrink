@@ -1,5 +1,17 @@
 import {NextRequest, NextResponse} from 'next/server';
 
+function decodeJwtPayload(token: string): any {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+        return JSON.parse(atob(padded));
+    } catch {
+        return null;
+    }
+}
+
 export async function middleware(req: NextRequest) {
     const host = req.headers.get('host') || '';
     const {pathname} = req.nextUrl;
@@ -14,6 +26,7 @@ export async function middleware(req: NextRequest) {
     // 2. 认证检查 - 从 cookie 读取 token（localStorage 无法在 middleware 中访问）
     const token = req.cookies.get('token')?.value;
     const isAuthenticated = !!token;
+    const decodedToken = token ? decodeJwtPayload(token) : null;
 
     const isAuthPage = pathname.startsWith('/(auth)') || pathname === '/login';
     const isPublicRoute = ['/home', '/products', '/about', '/'].some(p => pathname === p || pathname.startsWith(p + '/'));
@@ -21,7 +34,7 @@ export async function middleware(req: NextRequest) {
     // 3. 设置请求头
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('x-tenant', tenant || '');
-    requestHeaders.set('x-user-id', token?.sub || '');
+    requestHeaders.set('x-user-id', decodedToken?.sub || '');
 
     // 4. 响应初始化
     let response = NextResponse.next({
@@ -64,7 +77,7 @@ export async function middleware(req: NextRequest) {
 
     // 7. 角色权限检查（可选）
     if (isProtectedRoute && isAuthenticated) {
-        const userRole = token?.role as string;
+        const userRole = decodedToken?.role as string;
 
         // POS 和打印管理仅限管理员或收银员
         const adminRoutes = ['/pos', '/printing'];
@@ -77,9 +90,9 @@ export async function middleware(req: NextRequest) {
     }
 
     // 8. Token 刷新逻辑（如果 token 快过期）
-    if (token && token.exp) {
+    if (decodedToken && decodedToken.exp) {
         const now = Date.now() / 1000;
-        const expiresIn = Number(token.exp) - now;
+        const expiresIn = Number(decodedToken.exp) - now;
 
         // 如果剩余时间少于 1 小时，刷新 token
         if (expiresIn < 3600) {
@@ -92,7 +105,7 @@ export async function middleware(req: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
         const importantRoutes = ['/home', '/login', '/profile', '/pos', '/printing', '/cart'];
         if (importantRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
-            console.log(`[Middleware] ${pathname} | Tenant: ${tenant} | User: ${token?.sub || 'Anonymous'}`);
+            console.log(`[Middleware] ${pathname} | Tenant: ${tenant} | User: ${decodedToken?.sub || 'Anonymous'}`);
         }
     }
 

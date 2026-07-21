@@ -1,4 +1,5 @@
-from apps.core.permissions import IsShopOwnerOrStaff
+from datetime import datetime, timedelta
+
 from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import status
@@ -6,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import IsShopOwnerOrStaff
 from .serializers import (
     QuickOrderSerializer, BarcodeScanSerializer, TableStatusSerializer,
     OrderSplitSerializer, OrderMergeSerializer, CashierShiftSerializer
@@ -90,8 +92,17 @@ class POSViewSet(ModelViewSet):
             split_items = serializer.validated_data['split_items']
 
             from apps.orders.models import Order
+            SPLIT_ALLOWED_STATUSES = ['pending', 'paid', 'confirmed', 'preparing']
+
             try:
                 order = Order.objects.get(id=order_id, shop=request.tenant)
+
+                if order.status not in SPLIT_ALLOWED_STATUSES:
+                    return Response(
+                        {'error': '当前订单状态不允许拆分'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
                 pos_service = POSService(request.tenant)
                 new_order = pos_service.split_order(order, split_items)
 
@@ -119,8 +130,17 @@ class POSViewSet(ModelViewSet):
             merge_order_ids = serializer.validated_data['merge_order_ids']
 
             from apps.orders.models import Order
+            MERGE_ALLOWED_STATUSES = ['pending', 'paid', 'confirmed', 'preparing']
+
             try:
                 main_order = Order.objects.get(id=main_order_id, shop=request.tenant)
+
+                if main_order.status not in MERGE_ALLOWED_STATUSES:
+                    return Response(
+                        {'error': '主订单状态不允许合并'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
                 pos_service = POSService(request.tenant)
                 merged_order = pos_service.merge_orders(main_order, merge_order_ids)
 
@@ -259,7 +279,8 @@ def pos_statistics(request):
     if start_date:
         orders = orders.filter(created_at__gte=start_date)
     if end_date:
-        orders = orders.filter(created_at__lte=end_date)
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+        orders = orders.filter(created_at__lt=end_datetime)
 
     # 按日期分组统计
     daily_stats = orders.extra(
