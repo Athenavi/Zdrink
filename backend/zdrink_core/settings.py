@@ -291,7 +291,8 @@ SIMPLEUI_DEFAULT_THEME = 'admin.lte.css'  # 默认主题
 SIMPLEUI_STATIC_OFFLINE = True  # 使用离线资源，不使用CDN
 SIMPLEUI_CONFIG = {
     'system_keep': True,  # 保留系统菜单
-    'menu_display': ['认证和授权', '店铺管理', '商品管理', '订单管理', '支付管理', '打印管理', '促销管理'],
+    'menu_display': ['认证和授权', '用户与认证', '店铺管理', '商品管理', '订单管理', '支付管理', '打印管理',
+                     '促销管理'],
     'dynamic': True,  # 动态菜单
 }
 
