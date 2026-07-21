@@ -42,7 +42,11 @@ const navItems: NavItem[] = [
     {label: '数据报表', href: '/admin/reports', icon: <BarChart3 size={18}/>, permissions: ['report_view']},
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+    onClose?: () => void;
+}
+
+export function AdminSidebar({onClose}: AdminSidebarProps) {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
 
@@ -55,10 +59,17 @@ export function AdminSidebar() {
             )}
         >
             {/* Logo 区域 */}
-            <div className="flex h-14 items-center gap-2 border-b px-4">
-                <Store size={22} className="shrink-0 text-primary"/>
-                {!collapsed && (
-                    <span className="truncate text-sm font-semibold">商家管理</span>
+            <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
+                <div className="flex items-center gap-2">
+                    <Store size={22} className="shrink-0 text-primary"/>
+                    {!collapsed && (
+                        <span className="truncate text-sm font-semibold">商家管理</span>
+                    )}
+                </div>
+                {onClose && (
+                    <button onClick={onClose} className="lg:hidden p-1 rounded-md hover:bg-muted">
+                        <ChevronLeft size={16}/>
+                    </button>
                 )}
             </div>
 

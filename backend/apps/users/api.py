@@ -1,6 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth import login, logout
 from django.utils import timezone
-from rest_framework import status, generics, permissions
+from rest_framework import status, generics, permissions, filters
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +16,8 @@ from .serializers import (
     ChangePasswordSerializer
 )
 from ..core.permissions import IsShopOwnerOrStaff
+
+User = get_user_model()
 
 
 class RegisterView(APIView):
@@ -293,3 +296,20 @@ class UserAddressViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class CustomerListView(generics.ListAPIView):
+    """客户列表（仅限有订单记录的客户）"""
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username', 'email', 'phone']
+
+    def get_queryset(self):
+        from apps.orders.models import Order
+        shop = self.request.tenant
+        # 获取在当前店铺下过单的客户
+        customer_ids = Order.objects.filter(
+            shop=shop
+        ).values_list('user_id', flat=True).distinct()
+        return User.objects.filter(id__in=customer_ids).order_by('-date_joined')

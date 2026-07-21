@@ -1,7 +1,7 @@
 import csv
 
 from django.db import transaction, models
-from django.db.models import Prefetch
+from django.db.models import Max, Min, Case, Prefetch, Value, When
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, filters, viewsets
@@ -50,9 +50,17 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         # 根据action优化查询
         if self.action == 'list':
-            return queryset.only(
-                'id', 'name', 'category', 'base_price', 'main_image',
-                'status', 'is_featured', 'sort_order', 'created_at'
+            return queryset.defer(
+                'description', 'cost_price', 'images', 'barcode',
+                'allow_customization', 'preparation_time', 'updated_at'
+            ).annotate(
+                min_price=Min('skus__price'),
+                max_price=Max('skus__price'),
+                has_variants=Case(
+                    When(skus__isnull=False, then=Value(True)),
+                    default=Value(False),
+                    output_field=models.BooleanField()
+                )
             )
         return queryset
 
@@ -270,9 +278,18 @@ def public_products(request):
         status='active'
     ).select_related('category').prefetch_related(
         Prefetch('skus', queryset=ProductSKU.objects.filter(is_active=True))
-    ).only(
-        'id', 'name', 'category', 'base_price', 'main_image',
-        'description', 'preparation_time'
+    ).defer(
+        'cost_price', 'images', 'barcode',
+        'allow_customization', 'sort_order', 'is_featured', 'status',
+        'updated_at', 'created_at', 'created_by'
+    ).annotate(
+        min_price=Min('skus__price'),
+        max_price=Max('skus__price'),
+        has_variants=Case(
+            When(skus__isnull=False, then=Value(True)),
+            default=Value(False),
+            output_field=models.BooleanField()
+        )
     )
 
     # 过滤条件

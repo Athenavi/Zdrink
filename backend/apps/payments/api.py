@@ -4,16 +4,16 @@ from django.db import transaction
 from django.db.models import Sum, Count
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.permissions import IsShopOwnerOrStaff
-from .models import PaymentMethod, PaymentTransaction, RefundRequest, WechatPayConfig, AlipayConfig
+from .models import PaymentMethod, PaymentTransaction, RefundRequest
 from .serializers import (
     PaymentMethodSerializer, PaymentTransactionSerializer, CreatePaymentSerializer,
-    RefundRequestSerializer, WechatPayConfigSerializer, AlipayConfigSerializer
+    RefundRequestSerializer
 )
 from .services import PaymentServiceFactory
 
@@ -297,24 +297,40 @@ def alipay_callback(request):
         return Response('fail', status=400)
 
 
-class WechatPayConfigView(generics.RetrieveUpdateAPIView):
+@api_view(['GET', 'PUT'])
+@permission_classes([IsShopOwnerOrStaff])
+def wechat_pay_config(request):
     """微信支付配置"""
-    serializer_class = WechatPayConfigSerializer
-    permission_classes = [IsShopOwnerOrStaff]
+    from .models import WechatPayConfig
+    from .serializers import WechatPayConfigSerializer
+    config = WechatPayConfig.objects.filter(shop=request.tenant).first()
+    if not config:
+        config = WechatPayConfig(shop=request.tenant)
+    if request.method == 'GET':
+        serializer = WechatPayConfigSerializer(instance=config)
+        return Response(serializer.data)
+    serializer = WechatPayConfigSerializer(instance=config, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
 
-    def get_object(self):
-        from django.shortcuts import get_object_or_404
-        return get_object_or_404(WechatPayConfig, shop=self.request.tenant)
 
-
-class AlipayConfigView(generics.RetrieveUpdateAPIView):
+@api_view(['GET', 'PUT'])
+@permission_classes([IsShopOwnerOrStaff])
+def alipay_config(request):
     """支付宝配置"""
-    serializer_class = AlipayConfigSerializer
-    permission_classes = [IsShopOwnerOrStaff]
-
-    def get_object(self):
-        from django.shortcuts import get_object_or_404
-        return get_object_or_404(AlipayConfig, shop=self.request.tenant)
+    from .models import AlipayConfig
+    from .serializers import AlipayConfigSerializer
+    config = AlipayConfig.objects.filter(shop=request.tenant).first()
+    if not config:
+        config = AlipayConfig(shop=request.tenant)
+    if request.method == 'GET':
+        serializer = AlipayConfigSerializer(instance=config)
+        return Response(serializer.data)
+    serializer = AlipayConfigSerializer(instance=config, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
 
 
 @api_view(['GET'])

@@ -130,7 +130,7 @@ class ShopSettingsView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        shop_id = self.kwargs.get('shop_id')
+        shop_id = self.kwargs.get('shop_id') or self.request.tenant.id
 
         # 检查权限
         if not self.has_shop_permission(self.request.user, shop_id):
@@ -162,3 +162,19 @@ def get_current_shop(request):
 
     serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([permissions.IsAuthenticated])
+def get_current_staff(request):
+    """获取/添加当前店铺的员工"""
+    shop = request.tenant
+    if request.method == 'GET':
+        staff = ShopStaff.objects.filter(shop=shop, is_active=True)
+        serializer = ShopStaffSerializer(staff, many=True)
+        return Response(serializer.data)
+
+    serializer = ShopStaffCreateSerializer(data=request.data, context={'request': request})
+    serializer.is_valid(raise_exception=True)
+    serializer.save(shop=shop)
+    return Response(serializer.data, status=201)

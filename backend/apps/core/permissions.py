@@ -1,5 +1,6 @@
-from apps.shops.models import ShopStaff
 from rest_framework import permissions
+
+from apps.shops.models import ShopStaff
 
 
 class IsShopOwnerOrStaff(permissions.BasePermission):
@@ -95,6 +96,9 @@ class HasShopPermission(permissions.BasePermission):
 
     def __init__(self, permission):
         self.permission = permission
+
+    def __call__(self):
+        return self
 
     def has_permission(self, request, view):
         if not request.user.is_authenticated:

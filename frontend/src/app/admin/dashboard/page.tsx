@@ -78,12 +78,12 @@ export default function DashboardPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-semibold">仪表盘</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold">仪表盘</h1>
                 <p className="text-sm text-muted-foreground mt-1">欢迎回来，查看今日经营概况</p>
             </div>
 
             {/* 统计卡片 */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {statCards.map((card) => (
                     <Card key={card.label} size="sm">
                         <CardContent className="flex items-center gap-4">
@@ -92,14 +92,14 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground">{card.label}</p>
-                                <p className="text-xl font-bold">{card.value}</p>
+                                <p className="text-lg sm:text-xl font-bold">{card.value}</p>
                             </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 {/* 低库存预警 */}
                 <Card>
                     <CardHeader>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <a href="/admin/orders"
                                className="flex items-center gap-3 rounded-lg border p-4 text-sm hover:bg-muted/50 transition-colors">
                                 <ShoppingCart size={20} className="text-blue-500"/>

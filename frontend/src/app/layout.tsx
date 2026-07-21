@@ -29,7 +29,7 @@ export default function RootLayout({
             suppressHydrationWarning
         >
         <head>
-            {/* 移动端适配：动态根字体大小 */}
+            {/* 移动端适配：动态根字体大小（仅对小于设计稿宽度的屏幕缩放） */}
             <script
                 dangerouslySetInnerHTML={{
                     __html: `
@@ -38,7 +38,7 @@ export default function RootLayout({
                 var baseFontSize = 16;
                 function setRootFontSize() {
                   var width = document.documentElement ? document.documentElement.clientWidth : window.innerWidth;
-                  var fontSize = ((width / UI_WIDTH) * baseFontSize).toFixed(4);
+                  var fontSize = Math.min((width / UI_WIDTH) * baseFontSize, baseFontSize).toFixed(4);
                   document.documentElement.style.fontSize = fontSize + 'px';
                 }
                 setRootFontSize();
