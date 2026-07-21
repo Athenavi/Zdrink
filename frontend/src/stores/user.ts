@@ -128,8 +128,9 @@ export const useUserStore = create<UserState>()(
         }),
         {
             name: 'user-storage', // localStorage 中的 key
-            // 由于 token 存储在 cookie 中，这里只持久化登录状态
-            partialize: (state) => ({isLoggedIn: state.isLoggedIn}),
+            // 持久化 token 和登录状态（token 存 localStorage 是标准 SPA 实践，
+            // 因为 HttpOnly cookie 无法被 JavaScript 读取来设置 Authorization 头）
+            partialize: (state) => ({token: state.token, isLoggedIn: state.isLoggedIn}),
         }
     )
 );

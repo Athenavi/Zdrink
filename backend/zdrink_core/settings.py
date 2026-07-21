@@ -270,6 +270,9 @@ SPECTACULAR_SETTINGS = {
 }
 # 租户配置
 TENANT_LIMIT_SET_CALLS = True
+# 未找到租户域名时，使用 public schema 继续处理（开发环境必需，生产环境也安全）
+# 使得 /api/auth/* 等公共 API 在无租户上下文中也能正常工作
+SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 # 认证后端
 AUTHENTICATION_BACKENDS = (

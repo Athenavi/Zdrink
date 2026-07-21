@@ -1,5 +1,6 @@
 import axios, {AxiosError, AxiosRequestConfig} from 'axios';
 import {ApiError} from '@/types';
+import {useUserStore} from '@/stores/user';
 
 // 创建 axios 实例
 const apiClient = axios.create({
@@ -37,18 +38,25 @@ apiClient.interceptors.request.use(
         // 处理 URL 路径，添加 /api 前缀
         config.url = processUrl(config.url || '');
 
-        // 仅从 cookie 获取 token（与 middleware 保持一致）
+        // 从 Zustand store 获取 token（优先），其次从 cookie 获取
+        // 注意：token cookie 是 HttpOnly 的，无法通过 document.cookie 读取
         if (typeof window !== 'undefined') {
-            const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('token='))
-                ?.split('=')[1];
+            // 优先从 Zustand store（运行时内存）获取 token
+            let token = useUserStore.getState().token || '';
+
+            if (!token) {
+                // fallback 到 cookie（SSR 场景等 store 未初始化时）
+                token = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('token='))
+                    ?.split('=')[1] || '';
+            }
 
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
 
-            // 从 cookie 获取租户信息并添加到请求头
+            // 从 cookie 获取租户信息并添加到请求头（x-tenant 非 HttpOnly）
             const tenant = document.cookie
                 .split('; ')
                 .find(row => row.startsWith('x-tenant='))
