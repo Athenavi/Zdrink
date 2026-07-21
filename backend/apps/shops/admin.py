@@ -132,53 +132,55 @@ class ShopApplyAdmin(admin.ModelAdmin):
 
     def approve_applies(self, request, queryset):
         """审核通过：创建店铺、账号、员工记录、设置"""
-        from django.contrib.auth.hashers import make_password
+        from django_tenants.utils import schema_context, get_public_schema_name
 
         pending = queryset.filter(status='pending')
         count = 0
         for apply in pending:
             try:
-                # 1. 创建店主用户
-                username = f"owner_{apply.shop_name[:10]}_{apply.id}"
-                base_username = username
-                counter = 1
-                while User.objects.filter(username=username).exists():
-                    username = f"{base_username}_{counter}"
-                    counter += 1
+                # 切换到 public schema（Shop 是共享模型）
+                with schema_context(get_public_schema_name()):
+                    # 1. 创建店主用户
+                    username = f"owner_{apply.shop_name[:10]}_{apply.id}"
+                    base_username = username
+                    counter = 1
+                    while User.objects.filter(username=username).exists():
+                        username = f"{base_username}_{counter}"
+                        counter += 1
 
-                owner = User.objects.create_user(
-                    username=username,
-                    email=apply.contact_email,
-                    phone=apply.contact_phone,
-                    password=apply.account_password,
-                    user_type='shop_owner',
-                )
+                    owner = User.objects.create_user(
+                        username=username,
+                        email=apply.contact_email,
+                        phone=apply.contact_phone,
+                        password=apply.account_password,
+                        user_type='shop_owner',
+                    )
 
-                # 2. 创建店铺（Tenant）
-                import re
-                schema_name = re.sub(r'[^a-zA-Z0-9_]', '_', f"shop_{apply.shop_name[:20]}_{apply.id}")
-                shop = Shop.objects.create(
-                    schema_name=schema_name,
-                    name=apply.shop_name,
-                    shop_type=apply.shop_type,
-                    address=apply.shop_address or '',
-                    description=apply.shop_description or '',
-                    phone=apply.contact_phone,
-                    email=apply.contact_email,
-                )
+                    # 2. 创建店铺（Tenant）
+                    import re
+                    schema_name = re.sub(r'[^a-zA-Z0-9_]', '_', f"shop_{apply.shop_name[:20]}_{apply.id}")
+                    shop = Shop.objects.create(
+                        schema_name=schema_name,
+                        name=apply.shop_name,
+                        shop_type=apply.shop_type,
+                        address=apply.shop_address or '',
+                        description=apply.shop_description or '',
+                        phone=apply.contact_phone,
+                        email=apply.contact_email,
+                    )
 
-                # 3. 创建店主员工记录
-                ShopStaff.objects.create(
-                    user=owner,
-                    shop=shop,
-                    role='owner',
-                    permissions={'all': True},
-                )
+                    # 3. 创建店主员工记录
+                    ShopStaff.objects.create(
+                        user=owner,
+                        shop=shop,
+                        role='owner',
+                        permissions={'all': True},
+                    )
 
-                # 4. 创建店铺设置
-                ShopSettings.objects.create(shop=shop)
+                    # 4. 创建店铺设置
+                    ShopSettings.objects.create(shop=shop)
 
-                # 5. 更新申请状态
+                # 5. 更新申请状态（ShopApply 在 public schema 中，不需要 schema_context）
                 apply.status = 'approved'
                 apply.reviewer = request.user
                 apply.reviewed_at = timezone.now()
