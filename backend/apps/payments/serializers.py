@@ -100,8 +100,8 @@ class WechatPayConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = WechatPayConfig
         fields = ['id', 'shop', 'app_id', 'mch_id', 'api_key_configured', 'api_key', 'cert_path', 'key_path',
-                  'enable_jsapi', 'enable_miniprogram', 'enable_app', 'enable_wap', 'enable_pc',
-                  'notify_url', 'refund_url', 'is_active', 'created_at', 'updated_at']
+                  'enable_jsapi', 'enable_miniprogram', 'enable_native',
+                  'notify_url', 'refund_notify_url', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ('shop',)
         extra_kwargs = {
             'api_key': {'write_only': True},

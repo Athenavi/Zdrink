@@ -346,7 +346,7 @@ class PrintContentGenerator:
             'payment_status': '已支付' if order.payment_status else '未支付',
             'paid_at': order.paid_at.strftime('%H:%M') if order.paid_at else '',
             'order_type': order.get_order_type_display() if hasattr(order, 'get_order_type_display') else '',
-            'remark': order.remark or '',
+            'remark': order.customer_notes or '',
         }
 
         # 渲染各部分
