@@ -27,9 +27,18 @@ class ShopApplyView(APIView):
         return Response({'message': '入驻申请已提交，请等待审核'}, status=status.HTTP_201_CREATED)
 
     def get(self, request):
-        """查询当前用户的入驻申请记录（需提供查询参数）"""
+        """查询入驻申请记录（仅限超管和本人）"""
         phone = request.query_params.get('phone', '')
         email = request.query_params.get('email', '')
+
+        # 权限校验：超管可查看所有；普通用户只能查自己的
+        if request.user.user_type != 'super_admin':
+            user_phone = getattr(request.user, 'phone', '')
+            user_email = getattr(request.user, 'email', '')
+            if phone and phone != user_phone:
+                return Response({'error': '无权查询他人的申请记录'}, status=status.HTTP_403_FORBIDDEN)
+            if email and email != user_email:
+                return Response({'error': '无权查询他人的申请记录'}, status=status.HTTP_403_FORBIDDEN)
 
         if not phone and not email:
             return Response(

@@ -5,24 +5,14 @@ from .models import ShopApply
 
 
 class ShopApplySerializer(serializers.ModelSerializer):
-    """提交入驻申请"""
-    confirm_password = serializers.CharField(write_only=True, min_length=6)
+    """提交入驻申请（无需密码，审核通过后由系统通知设置）"""
 
     class Meta:
         model = ShopApply
         fields = [
             'contact_name', 'contact_phone', 'contact_email',
             'shop_name', 'shop_type', 'shop_address', 'shop_description',
-            'account_password', 'confirm_password',
         ]
-        extra_kwargs = {
-            'account_password': {'write_only': True, 'min_length': 6},
-        }
-
-    def validate(self, data):
-        if data['account_password'] != data.pop('confirm_password'):
-            raise serializers.ValidationError('两次输入的密码不一致')
-        return data
 
     def validate_contact_phone(self, value):
         import re

@@ -17,7 +17,16 @@ class ShopSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Shop
-        fields = '__all__'
+        fields = [
+            'id', 'name', 'description', 'shop_type', 'address',
+            'phone', 'email', 'logo', 'banner',
+            'opening_hours', 'is_active',
+            'allow_delivery', 'allow_pickup', 'allow_dine_in',
+            'delivery_fee', 'minimum_order_amount', 'delivery_radius',
+            'payment_methods',
+            'created_at', 'updated_at',
+            'settings',
+        ]
         read_only_fields = ('created_at', 'updated_at', 'schema_name')
 
 
@@ -95,6 +104,14 @@ class ShopStaffCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShopStaff
         fields = ('email', 'password', 'role', 'permissions')
+
+    def validate_role(self, value):
+        """非超级管理员不能创建 owner 角色"""
+        request = self.context.get('request')
+        if request and request.user.user_type != 'super_admin':
+            if value == 'owner':
+                raise serializers.ValidationError('无权创建店主角色')
+        return value
 
     def validate(self, attrs):
         email = attrs.get('email')

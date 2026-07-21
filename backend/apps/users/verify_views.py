@@ -14,6 +14,22 @@ from .verify_services import create_and_send_code, get_login_mode
 logger = logging.getLogger(__name__)
 
 
+def _verify_captcha_or_reject(request) -> bool:
+    """强制人机验证：如果已配置人机验证，则必须校验通过（不接受客户端跳过）"""
+    captcha_config = get_captcha_config()
+    if captcha_config.get('active'):
+        provider = captcha_config['provider']
+        captcha_data = {
+            k: v for k, v in request.data.items()
+            if k.startswith('captcha_') or k in ('lot_number', 'captcha_output', 'pass_token', 'gen_time',
+                                                 'ticket', 'randstr', 'session_id', 'sig', 'token', 'scene',
+                                                 'validate')
+        }
+        if not verify_captcha_token(provider, captcha_data):
+            return False
+    return True
+
+
 class CaptchaConfigView(APIView):
     """获取人机验证配置"""
     permission_classes = [permissions.AllowAny]
@@ -29,17 +45,9 @@ class SendCodeView(APIView):
     authentication_classes = []
 
     def post(self, request):
-        # 验证人机验证 token
-        captcha_provider = request.data.get('captcha_provider', '')
-        captcha_data = {
-            k: v for k, v in request.data.items()
-            if k.startswith('captcha_') or k in ('lot_number', 'captcha_output', 'pass_token', 'gen_time',
-                                                 'ticket', 'randstr', 'session_id', 'sig', 'token', 'scene',
-                                                 'validate')
-        }
-        if captcha_provider:
-            if not verify_captcha_token(captcha_provider, captcha_data):
-                return Response({'error': '人机验证失败，请重新验证'}, status=status.HTTP_400_BAD_REQUEST)
+        # 强制人机验证（如果配置了的话），不接受客户端跳过
+        if not _verify_captcha_or_reject(request):
+            return Response({'error': '人机验证失败，请重新验证'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = SendCodeSerializer(data=request.data)
         if not serializer.is_valid():
@@ -49,7 +57,10 @@ class SendCodeView(APIView):
         email = serializer.validated_data.get('email', '')
         purpose = serializer.validated_data.get('purpose', 'login')
 
-        create_and_send_code(phone=phone, email=email, purpose=purpose)
+        try:
+            create_and_send_code(phone=phone, email=email, purpose=purpose)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         return Response({'message': '验证码已发送'}, status=status.HTTP_200_OK)
 
@@ -60,17 +71,9 @@ class LoginByCodeView(APIView):
     authentication_classes = []
 
     def post(self, request):
-        # 验证人机验证 token
-        captcha_provider = request.data.get('captcha_provider', '')
-        captcha_data = {
-            k: v for k, v in request.data.items()
-            if k.startswith('captcha_') or k in ('lot_number', 'captcha_output', 'pass_token', 'gen_time',
-                                                 'ticket', 'randstr', 'session_id', 'sig', 'token', 'scene',
-                                                 'validate')
-        }
-        if captcha_provider:
-            if not verify_captcha_token(captcha_provider, captcha_data):
-                return Response({'error': '人机验证失败，请重新验证'}, status=status.HTTP_400_BAD_REQUEST)
+        # 强制人机验证（如果配置了的话），不接受客户端跳过
+        if not _verify_captcha_or_reject(request):
+            return Response({'error': '人机验证失败，请重新验证'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = LoginByCodeSerializer(data=request.data)
         if not serializer.is_valid():

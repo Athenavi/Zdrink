@@ -164,10 +164,16 @@ def get_current_shop(request):
 
         # 验证权限
         if user.user_type != 'super_admin':
-            exists = ShopStaff.objects.filter(
-                user=user, shop=shop, is_active=True
-            ).exists()
-            if not exists:
+            try:
+                staff = ShopStaff.objects.get(
+                    user=user, shop=shop, is_active=True
+                )
+                if staff.role not in ('owner', 'manager'):
+                    return Response(
+                        {'error': '没有权限修改该店铺'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except ShopStaff.DoesNotExist:
                 return Response(
                     {'error': '没有权限修改该店铺'},
                     status=status.HTTP_403_FORBIDDEN

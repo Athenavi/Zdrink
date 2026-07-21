@@ -131,7 +131,7 @@ class POSViewSet(ModelViewSet):
             merge_order_ids = serializer.validated_data['merge_order_ids']
 
             from apps.orders.models import Order
-            MERGE_ALLOWED_STATUSES = ['pending', 'paid', 'confirmed', 'preparing']
+            MERGE_ALLOWED_STATUSES = ['pending']
 
             try:
                 main_order = Order.objects.get(id=main_order_id, shop=request.tenant)

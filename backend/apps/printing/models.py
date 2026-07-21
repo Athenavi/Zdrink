@@ -164,6 +164,12 @@ class PrintLog(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # 日志中仅保留打印内容摘要（最多500字符），降低个人信息泄露风险
+        if self.print_content and len(self.print_content) > 500:
+            self.print_content = self.print_content[:500] + '\n...（内容已截断，完整内容见打印任务）'
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = 'print_logs'
         verbose_name = '打印日志'

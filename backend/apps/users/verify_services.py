@@ -225,15 +225,37 @@ def create_and_send_code(phone: str = '', email: str = '', purpose: str = 'login
     """
     生成并发送验证码
     （不返回验证码，防止泄露）
+
+    Raises:
+        ValueError: 同一手机号/邮箱发送过于频繁
     """
     config = _get_config()
 
     if config:
         code_length = config.code_length
         expire_seconds = config.code_expire_seconds
+        min_interval = 60  # 同一目标最少间隔 60 秒
     else:
         code_length = 6
         expire_seconds = 300
+        min_interval = 60
+
+    # 防短信轰炸：检查同一手机号/邮箱的发送间隔
+    if phone:
+        last_record = VerifyCode.objects.filter(
+            phone=phone, purpose=purpose
+        ).order_by('-created_at').first()
+    elif email:
+        last_record = VerifyCode.objects.filter(
+            email=email, purpose=purpose
+        ).order_by('-created_at').first()
+    else:
+        raise ValueError('手机号和邮箱不能同时为空')
+
+    if last_record:
+        elapsed = (timezone.now() - last_record.created_at).total_seconds()
+        if elapsed < min_interval:
+            raise ValueError(f'发送过于频繁，请 {int(min_interval - elapsed)} 秒后再试')
 
     code = generate_code(code_length)
     expires_at = timezone.now() + timedelta(seconds=expire_seconds)

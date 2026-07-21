@@ -158,10 +158,19 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class OrderItemDataSerializer(serializers.Serializer):
+    """订单商品数据序列化器（结构校验，防止负数金额等攻击）"""
+    product_id = serializers.IntegerField()
+    sku_id = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(min_value=1, max_value=999)
+    attribute_selections = serializers.DictField(required=False, default=dict)
+    customization = serializers.CharField(required=False, allow_blank=True)
+
+
 class CreateOrderSerializer(serializers.ModelSerializer):
     """创建订单序列化器"""
     cart_id = serializers.IntegerField(required=False)
-    items = serializers.ListField(child=serializers.DictField(), required=False)
+    items = OrderItemDataSerializer(many=True, required=False)
 
     class Meta:
         model = Order
@@ -285,7 +294,13 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 sku = ProductSKU.objects.get(id=item_data['sku_id'], product__shop=order.shop)
 
             unit_price = sku.price if sku else product.base_price
-            total_price = unit_price * item_data['quantity']
+            quantity = item_data['quantity']
+
+            # 防御性校验：数量必须为正整数
+            if not isinstance(quantity, int) or quantity < 1 or quantity > 999:
+                raise serializers.ValidationError(f"商品 {product.name} 数量不合法")
+
+            total_price = unit_price * quantity
 
             OrderItem.objects.create(
                 order=order,
@@ -295,7 +310,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 product_image=product.main_image.url if product.main_image else '',
                 specifications=self._get_specifications_data(sku),
                 unit_price=unit_price,
-                quantity=item_data['quantity'],
+                quantity=quantity,
                 total_price=total_price,
                 attribute_selections=item_data.get('attribute_selections', {}),
                 customization=item_data.get('customization', '')
@@ -305,8 +320,8 @@ class CreateOrderSerializer(serializers.ModelSerializer):
             if sku:
                 updated = ProductSKU.objects.filter(
                     id=sku.id,
-                    stock_quantity__gte=item_data['quantity']
-                ).update(stock_quantity=F('stock_quantity') - item_data['quantity'])
+                    stock_quantity__gte=quantity
+                ).update(stock_quantity=F('stock_quantity') - quantity)
 
                 if updated == 0:
                     raise serializers.ValidationError(f"商品 {product.name} 库存不足")

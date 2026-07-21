@@ -108,13 +108,14 @@ class PrintTemplateViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         # 如果设置为默认模板，取消其他同类型模板的默认状态
-        if serializer.validated_data.get('is_default', False):
-            PrintTemplate.objects.filter(
-                shop=self.request.tenant,
-                template_type=serializer.validated_data['template_type']
-            ).update(is_default=False)
+        with transaction.atomic():
+            if serializer.validated_data.get('is_default', False):
+                PrintTemplate.objects.filter(
+                    shop=self.request.tenant,
+                    template_type=serializer.validated_data['template_type']
+                ).update(is_default=False)
 
-        serializer.save(shop=self.request.tenant)
+            serializer.save(shop=self.request.tenant)
 
     @action(detail=True, methods=['post'])
     def set_default(self, request, pk=None):

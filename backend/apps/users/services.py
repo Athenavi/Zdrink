@@ -92,6 +92,8 @@ class PointsService:
 
             # 基础积分：每元获得的积分数
             points_per_yuan = rule.config.get('points_per_yuan', 10)
+            if not isinstance(points_per_yuan, (int, float)) or points_per_yuan <= 0:
+                points_per_yuan = 10
             base_points = int(float(order.total_amount) * points_per_yuan)
 
             if base_points <= 0:

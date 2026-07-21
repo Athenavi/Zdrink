@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, TokenError
 
 from .serializers import (
     UserRegistrationSerializer,
@@ -99,6 +99,26 @@ class LogoutView(APIView):
 
     def post(self, request):
         logout(request)
+
+        # 将当前 access token 加入黑名单
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Bearer '):
+            token_str = auth_header[7:]
+            try:
+                token = AccessToken(token_str)
+                token.blacklist()
+            except (TokenError, AttributeError):
+                pass  # token 已过期或 blacklist app 未启用，静默处理
+
+        # 尝试黑名单 refresh token（如果请求体有提供）
+        refresh_token_str = request.data.get('refresh_token', '')
+        if refresh_token_str:
+            try:
+                refresh_token = RefreshToken(refresh_token_str)
+                refresh_token.blacklist()
+            except (TokenError, AttributeError):
+                pass
+
         return Response({'message': '退出登录成功'}, status=status.HTTP_200_OK)
 
 
@@ -120,6 +140,7 @@ class UpdateProfileView(generics.UpdateAPIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'password_change'
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -302,7 +323,10 @@ def signin_earn_points(request):
             is_active=True
         )
 
-        points = rule.config.get('points', 10)  # 默认拥有10个积分
+        points = rule.config.get('points', 10)
+        if not isinstance(points, (int, float)) or points < 1:
+            points = 10
+        points = int(points)
 
         points_service = PointsService(request.user, request.tenant)
         points_service.earn_points(

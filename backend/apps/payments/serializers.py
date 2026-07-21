@@ -16,7 +16,15 @@ class PaymentTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PaymentTransaction
-        fields = '__all__'
+        fields = [
+            'id', 'transaction_no', 'out_trade_no',
+            'order', 'order_number',
+            'payment_method', 'payment_method_name',
+            'amount', 'status',
+            'thirdparty_trade_no',
+            'refund_amount',
+            'created_at', 'updated_at', 'paid_at', 'refunded_at',
+        ]
         read_only_fields = ('transaction_no', 'out_trade_no', 'payment_data', 'refund_data')
 
 
@@ -25,7 +33,6 @@ class CreatePaymentSerializer(serializers.Serializer):
     order_id = serializers.IntegerField()
     payment_method_id = serializers.IntegerField(required=False)
     payment_method = serializers.CharField(required=False)  # 支持 'wechat', 'alipay', 'cash'
-    openid = serializers.CharField(required=False, allow_blank=True)  # 微信支付需要
 
     def validate(self, data):
         from apps.orders.models import Order

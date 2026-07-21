@@ -63,6 +63,12 @@ class PaymentService:
             points_per_yuan = rule.config.get('points_per_yuan', 10)
             min_order_amount = rule.config.get('min_order_amount', 0)
 
+            # 类型校验
+            if not isinstance(points_per_yuan, (int, float)) or points_per_yuan <= 0:
+                points_per_yuan = 10
+            if not isinstance(min_order_amount, (int, float)):
+                min_order_amount = 0
+
             # 检查是否达到最小订单金额
             if order.total_amount < min_order_amount:
                 return
