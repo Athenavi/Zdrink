@@ -18,6 +18,11 @@ class SocialAuthCallbackSerializer(serializers.Serializer):
         required=False,
         help_text='平台类型'
     )
+    state = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text='OAuth state 参数，用于 CSRF 防护'
+    )
 
 
 class SocialBindSerializer(serializers.Serializer):

@@ -14,7 +14,8 @@ from .serializers import (
     UserLoginSerializer,
     UserSerializer,
     UserProfileUpdateSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    CustomerListSerializer,
 )
 from ..core.permissions import IsShopOwnerOrStaff
 
@@ -336,8 +337,8 @@ class UserAddressViewSet(ModelViewSet):
 
 
 class CustomerListView(generics.ListAPIView):
-    """客户列表（仅限有订单记录的客户）"""
-    serializer_class = UserSerializer
+    """客户列表（仅限有订单记录的客户，手机号脱敏）"""
+    serializer_class = CustomerListSerializer
     permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [filters.SearchFilter]
     search_fields = ['username', 'email', 'phone']

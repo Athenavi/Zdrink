@@ -29,6 +29,7 @@ export default function WeixinCallbackPage() {
                 // 调用后端接口，使用code换取用户信息和token
                 const response = await apiClient.post('/users/social/callback/', {
                     code: code,
+                    state: state || '',
                     provider: 'weixin',
                     platform: 'pc'
                 });

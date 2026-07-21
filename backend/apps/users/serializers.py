@@ -59,6 +59,22 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'date_joined', 'points')
 
 
+class CustomerListSerializer(serializers.ModelSerializer):
+    """客户列表序列化器（脱敏，仅暴露基本信息）"""
+    masked_phone = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'masked_phone', 'total_consumption',
+                  'consumption_count', 'total_points', 'date_joined')
+
+    def get_masked_phone(self, obj):
+        phone = obj.phone
+        if phone and len(phone) >= 7:
+            return phone[:3] + '****' + phone[-4:]
+        return phone
+
+
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

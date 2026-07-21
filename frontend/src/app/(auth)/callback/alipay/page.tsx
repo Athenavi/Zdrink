@@ -15,6 +15,7 @@ export default function AlipayCallbackPage() {
     useEffect(() => {
         const handleCallback = async () => {
             const code = searchParams.get('auth_code');
+            const state = searchParams.get('state') || '';
 
             if (!code) {
                 setError('授权失败，未获取到授权码');
@@ -28,6 +29,7 @@ export default function AlipayCallbackPage() {
                 // 调用后端接口，使用code换取用户信息和token
                 const response = await apiClient.post('/users/social/callback/', {
                     code: code,
+                    state: state,
                     provider: 'alipay',
                     platform: 'pc'
                 });

@@ -230,9 +230,6 @@ class ShopApply(models.Model):
     shop_address = models.TextField(blank=True, verbose_name='店铺地址')
     shop_description = models.TextField(blank=True, verbose_name='店铺描述')
 
-    # 登录凭证（审核通过后用于创建 owner 账号）
-    account_password = models.CharField(max_length=128, verbose_name='登录密码')
-
     # 状态
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='审核状态')
     review_remark = models.TextField(blank=True, verbose_name='审核备注')

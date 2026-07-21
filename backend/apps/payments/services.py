@@ -243,13 +243,8 @@ class WechatPaymentService(PaymentService):
             raise Exception(f"微信小程序支付创建失败: {str(e)}")
 
     def _get_user_openid(self, request):
-        """获取用户openid"""
-        # 优先从请求数据中获取
-        openid = request.data.get('openid')
-        if openid:
-            return openid
-
-        # 从用户模型中获取
+        """获取用户openid（仅从 User 模型获取，拒绝客户端提交）"""
+        # 从已认证用户模型中获取
         if hasattr(request.user, 'wechat_openid') and request.user.wechat_openid:
             return request.user.wechat_openid
 
@@ -693,12 +688,26 @@ class PointsPaymentService(PaymentService):
 
     def refund(self, transaction, refund_amount, reason):
         """积分退款"""
-        from django.db.models import F
-        user = transaction.order.user
-        points_to_refund = int(refund_amount * 100)
-        user.available_points = F('available_points') + points_to_refund
-        user.save(update_fields=['available_points'])
-        user.refresh_from_db()
+        from django.db import transaction as db_transaction
+        from apps.users.models import PointsLog
+
+        with db_transaction.atomic():
+            user = transaction.order.user
+            points_to_refund = int(refund_amount * 100)
+            user.available_points = F('available_points') + points_to_refund
+            user.save(update_fields=['available_points'])
+            user.refresh_from_db()
+
+            # 记录积分日志
+            PointsLog.objects.create(
+                user=user,
+                points_type='adjust',
+                points=points_to_refund,
+                current_points=user.available_points,
+                notes=f'积分退款: {reason or "退款"}',
+                reference_id=str(transaction.id),
+                shop=transaction.order.shop
+            )
 
         return {
             'message': '积分退款成功',

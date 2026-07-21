@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
 
 class User(AbstractUser):
@@ -306,13 +307,13 @@ class SocialLoginConfig(models.Model):
     """第三方登录配置（全局配置，仅允许一条记录）"""
     # 微信登录
     weixin_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='微信 AppID')
-    weixin_app_secret = models.CharField(max_length=300, blank=True, default='', verbose_name='微信 AppSecret')
+    weixin_app_secret = EncryptedCharField(max_length=300, blank=True, default='', verbose_name='微信 AppSecret')
     weixin_scope = models.CharField(max_length=50, default='snsapi_login', verbose_name='微信 Scope')
 
     # 支付宝登录
     alipay_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='支付宝 AppID')
-    alipay_private_key = models.TextField(blank=True, default='', verbose_name='支付宝应用私钥')
-    alipay_public_key = models.TextField(blank=True, default='', verbose_name='支付宝公钥')
+    alipay_private_key = EncryptedTextField(blank=True, default='', verbose_name='支付宝应用私钥')
+    alipay_public_key = EncryptedTextField(blank=True, default='', verbose_name='支付宝公钥')
     alipay_scope = models.CharField(max_length=50, default='auth_user', verbose_name='支付宝 Scope')
 
     # 控制
@@ -399,13 +400,13 @@ class VerifyConfig(models.Model):
         verbose_name='短信服务商'
     )
     # 阿里云 SMS
-    aliyun_access_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云 AccessKey')
-    aliyun_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云 SecretKey')
+    aliyun_access_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 AccessKey')
+    aliyun_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 SecretKey')
     aliyun_sign_name = models.CharField(max_length=100, blank=True, default='', verbose_name='阿里云短信签名')
     aliyun_template_code = models.CharField(max_length=100, blank=True, default='', verbose_name='阿里云短信模板码')
     # 腾讯云 SMS
-    tencent_secret_id = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretId')
-    tencent_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretKey')
+    tencent_secret_id = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretId')
+    tencent_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretKey')
     tencent_sdk_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云 SDK AppID')
     tencent_sign_name = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云短信签名')
     tencent_template_code = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云短信模板码')
@@ -414,7 +415,7 @@ class VerifyConfig(models.Model):
     email_host = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 服务器')
     email_port = models.PositiveIntegerField(default=465, verbose_name='SMTP 端口')
     email_host_user = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 用户名')
-    email_host_password = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 密码')
+    email_host_password = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='SMTP 密码')
     email_use_tls = models.BooleanField(default=False, verbose_name='使用 TLS')
     email_use_ssl = models.BooleanField(default=True, verbose_name='使用 SSL')
     email_from = models.EmailField(blank=True, default='', verbose_name='发件人地址')
@@ -454,24 +455,25 @@ class CaptchaConfig(models.Model):
 
     # 极验 GEETEST v4
     geetest_captcha_id = models.CharField(max_length=200, blank=True, default='', verbose_name='极验 captcha_id')
-    geetest_captcha_key = models.CharField(max_length=200, blank=True, default='', verbose_name='极验 captcha_key')
+    geetest_captcha_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='极验 captcha_key')
 
     # 腾讯云验证码
     tencent_app_id = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 Captcha AppId')
-    tencent_secret_key = models.CharField(max_length=200, blank=True, default='',
-                                          verbose_name='腾讯云 Captcha SecretKey')
+    tencent_secret_key = EncryptedCharField(max_length=200, blank=True, default='',
+                                            verbose_name='腾讯云 Captcha SecretKey')
 
     # 阿里云验证码
     aliyun_app_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云验证码 AppKey')
-    aliyun_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云验证码 SecretKey')
+    aliyun_secret_key = EncryptedCharField(max_length=200, blank=True, default='',
+                                           verbose_name='阿里云验证码 SecretKey')
 
     # 顶象
     dingxiang_app_id = models.CharField(max_length=200, blank=True, default='', verbose_name='顶象 appId')
-    dingxiang_app_secret = models.CharField(max_length=200, blank=True, default='', verbose_name='顶象 appSecret')
+    dingxiang_app_secret = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='顶象 appSecret')
 
     # 网易易盾
     netease_captcha_id = models.CharField(max_length=200, blank=True, default='', verbose_name='易盾 captchaId')
-    netease_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='易盾 secretKey')
+    netease_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='易盾 secretKey')
 
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 

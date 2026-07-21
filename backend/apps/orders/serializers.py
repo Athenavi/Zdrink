@@ -146,7 +146,16 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = '__all__'
+        fields = [
+            'id', 'order_number', 'user', 'status', 'order_type',
+            'subtotal', 'delivery_fee', 'discount_amount', 'total_amount',
+            'payment_method', 'payment_status', 'paid_at',
+            'customer_name', 'customer_phone', 'customer_notes',
+            'delivery_address', 'delivery_time',
+            'pickup_time', 'table_number',
+            'shop', 'created_at', 'updated_at', 'completed_at',
+            'items', 'status_logs', 'payments', 'estimated_preparation_time',
+        ]
 
 
 class CreateOrderSerializer(serializers.ModelSerializer):

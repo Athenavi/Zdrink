@@ -161,6 +161,14 @@ class RefundRequestViewSet(ModelViewSet):
     def process(self, request, pk=None):
         """处理退款申请"""
         refund_request = self.get_object()
+
+        # 防重复处理：已完成的退款申请禁止再次操作
+        if refund_request.status in ('completed', 'approved', 'rejected'):
+            return Response(
+                {'error': f'退款申请已{refund_request.get_status_display()}，不可重复处理'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         action = request.data.get('action')  # approve or reject
         reason = request.data.get('reason', '')
 
@@ -334,7 +342,7 @@ def alipay_config(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsShopOwnerOrStaff])
 def payment_statistics(request):
     """支付统计"""
     today = timezone.now().date()

@@ -102,6 +102,11 @@ class WeixinLoginView(APIView):
 
         app_id, _, scope = _get_weixin_config()
 
+        # 生成 state 并存入 session（用于回调时 CSRF 校验）
+        oauth_state = secrets.token_urlsafe(16)
+        request.session['oauth_state'] = oauth_state
+        request.session['oauth_state_provider'] = 'weixin'
+
         # 构建授权URL
         if platform == 'mobile':
             auth_url = (
@@ -110,7 +115,7 @@ class WeixinLoginView(APIView):
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
                 f"scope={scope}&"
-                f"state={secrets.token_urlsafe(16)}#wechat_redirect"
+                f"state={oauth_state}#wechat_redirect"
             )
         else:
             auth_url = (
@@ -119,11 +124,12 @@ class WeixinLoginView(APIView):
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
                 f"scope={scope}&"
-                f"state={secrets.token_urlsafe(16)}"
+                f"state={oauth_state}"
             )
 
         return Response({
             'auth_url': auth_url,
+            'state': oauth_state,  # 返回给前端用于校验
             'provider': 'weixin',
             'platform': platform
         })
@@ -150,6 +156,11 @@ class AlipayLoginView(APIView):
 
         app_id, _, _, scope = _get_alipay_config()
 
+        # 生成 state 并存入 session（用于回调时 CSRF 校验）
+        oauth_state = secrets.token_urlsafe(16)
+        request.session['oauth_state'] = oauth_state
+        request.session['oauth_state_provider'] = 'alipay'
+
         # 构建授权URL
         from urllib.parse import urlencode
 
@@ -159,10 +170,11 @@ class AlipayLoginView(APIView):
             'redirect_uri': redirect_uri,
         }
 
-        auth_url = f"https://openauth.alipay.com/oauth2/publicAppAuthorize.htm?{urlencode(params)}"
+        auth_url = f"https://openauth.alipay.com/oauth2/publicAppAuthorize.htm?{urlencode(params)}&state={oauth_state}"
 
         return Response({
             'auth_url': auth_url,
+            'state': oauth_state,
             'provider': 'alipay'
         })
 
@@ -182,6 +194,18 @@ class SocialCallbackView(APIView):
         code = serializer.validated_data['code']
         provider = serializer.validated_data['provider']
         platform = serializer.validated_data.get('platform', 'pc')
+        state = serializer.validated_data.get('state', '')
+
+        # OAuth state 校验：防止 CSRF 攻击
+        expected_state = request.session.pop('oauth_state', None)
+        expected_provider = request.session.pop('oauth_state_provider', None)
+
+        if expected_state and state:
+            if state != expected_state or provider != expected_provider:
+                return Response(
+                    {'error': 'state 参数不匹配，可能存在 CSRF 攻击'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         try:
             if provider == 'weixin':
