@@ -155,7 +155,7 @@ export default function RegisterPage() {
                     </form>
 
                     {/* 链接 */}
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 text-center space-y-2">
                         <p className="text-sm text-gray-600">
                             已有账号？{' '}
                             <Link
@@ -163,6 +163,15 @@ export default function RegisterPage() {
                                 className="text-green-600 hover:text-green-700 font-medium"
                             >
                                 立即登录
+                            </Link>
+                        </p>
+                        <p className="text-sm text-gray-500 border-t border-gray-100 pt-3 mt-1">
+                            🏪 想成为商家？
+                            <Link
+                                href="/register/merchant"
+                                className="text-blue-600 hover:text-blue-700 font-semibold ml-1"
+                            >
+                                立即申请入驻 →
                             </Link>
                         </p>
                     </div>

@@ -208,3 +208,48 @@ class Table(models.Model):
             shop=self.shop,
             status__in=['pending', 'paid', 'confirmed', 'preparing']
         ).first()
+
+
+class ShopApply(models.Model):
+    """商家入驻申请"""
+    STATUS_CHOICES = (
+        ('pending', '待审核'),
+        ('approved', '已通过'),
+        ('rejected', '已拒绝'),
+    )
+
+    # 申请人信息
+    contact_name = models.CharField(max_length=100, verbose_name='联系人')
+    contact_phone = models.CharField(max_length=20, verbose_name='联系电话')
+    contact_email = models.EmailField(verbose_name='联系邮箱')
+
+    # 店铺信息
+    shop_name = models.CharField(max_length=200, verbose_name='店铺名称')
+    shop_type = models.CharField(max_length=20, choices=Shop.SHOP_TYPE_CHOICES, default='restaurant',
+                                 verbose_name='店铺类型')
+    shop_address = models.TextField(blank=True, verbose_name='店铺地址')
+    shop_description = models.TextField(blank=True, verbose_name='店铺描述')
+
+    # 登录凭证（审核通过后用于创建 owner 账号）
+    account_password = models.CharField(max_length=128, verbose_name='登录密码')
+
+    # 状态
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='审核状态')
+    review_remark = models.TextField(blank=True, verbose_name='审核备注')
+    reviewer = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        verbose_name='审核人'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name='审核时间')
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='申请时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'shop_applies'
+        verbose_name = '入驻申请'
+        verbose_name_plural = '入驻申请'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.shop_name} - {self.contact_name} ({self.get_status_display()})'

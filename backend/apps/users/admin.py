@@ -79,3 +79,89 @@ class SocialLoginConfigAdmin(admin.ModelAdmin):
         if SocialLoginConfig.objects.exists():
             return False
         return True
+
+
+from .models import VerifyCode, VerifyConfig, CaptchaConfig
+
+
+@admin.register(VerifyConfig)
+class VerifyConfigAdmin(admin.ModelAdmin):
+    list_display = ['login_mode', 'sms_provider', 'is_active', 'updated_at']
+    fieldsets = (
+        ('启用控制', {
+            'fields': ('is_active', 'login_mode', 'enable_phone_login', 'enable_email_login'),
+        }),
+        ('验证码参数', {
+            'fields': ('code_length', 'code_expire_seconds'),
+        }),
+        ('短信服务（阿里云）', {
+            'fields': (
+                'sms_provider', 'aliyun_access_key', 'aliyun_secret_key',
+                'aliyun_sign_name', 'aliyun_template_code'
+            ),
+            'description': '选择「阿里云短信」时需填写以下参数',
+        }),
+        ('短信服务（腾讯云）', {
+            'fields': (
+                'tencent_secret_id', 'tencent_secret_key', 'tencent_sdk_app_id',
+                'tencent_sign_name', 'tencent_template_code'
+            ),
+            'description': '选择「腾讯云短信」时需填写以下参数',
+        }),
+        ('邮件服务（SMTP）', {
+            'fields': (
+                'email_host', 'email_port', 'email_host_user', 'email_host_password',
+                'email_use_tls', 'email_use_ssl', 'email_from'
+            ),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        if VerifyConfig.objects.exists():
+            return False
+        return True
+
+
+@admin.register(CaptchaConfig)
+class CaptchaConfigAdmin(admin.ModelAdmin):
+    list_display = ['provider', 'is_active', 'updated_at']
+    fieldsets = (
+        ('基本设置', {
+            'fields': ('provider', 'is_active'),
+        }),
+        ('极验 GEETEST v4', {
+            'fields': ('geetest_captcha_id', 'geetest_captcha_key'),
+        }),
+        ('腾讯云验证码', {
+            'fields': ('tencent_app_id', 'tencent_secret_key'),
+        }),
+        ('阿里云验证码', {
+            'fields': ('aliyun_app_key', 'aliyun_secret_key'),
+        }),
+        ('顶象验证码', {
+            'fields': ('dingxiang_app_id', 'dingxiang_app_secret'),
+        }),
+        ('网易易盾验证码', {
+            'fields': ('netease_captcha_id', 'netease_secret_key'),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        if CaptchaConfig.objects.exists():
+            return False
+        return True
+
+
+@admin.register(VerifyCode)
+class VerifyCodeAdmin(admin.ModelAdmin):
+    list_display = ['phone', 'email', 'code', 'purpose', 'is_used', 'created_at']
+    list_filter = ['purpose', 'is_used', 'created_at']
+    search_fields = ['phone', 'email']
+    readonly_fields = ['phone', 'email', 'code', 'purpose', 'expires_at', 'created_at']
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

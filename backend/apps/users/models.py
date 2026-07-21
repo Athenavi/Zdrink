@@ -332,3 +332,158 @@ class SocialLoginConfig(models.Model):
         if not self.pk and SocialLoginConfig.objects.exists():
             return  # 已有配置，禁止创建第二条
         super().save(*args, **kwargs)
+
+
+class VerifyCode(models.Model):
+    """验证码存储"""
+    PURPOSE_CHOICES = (
+        ('login', '登录'),
+        ('register', '注册'),
+        ('bind', '绑定手机/邮箱'),
+    )
+
+    phone = models.CharField(max_length=15, blank=True, default='', verbose_name='手机号')
+    email = models.EmailField(blank=True, default='', verbose_name='邮箱')
+    code = models.CharField(max_length=10, verbose_name='验证码')
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default='login', verbose_name='用途')
+    is_used = models.BooleanField(default=False, verbose_name='已使用')
+    expires_at = models.DateTimeField(verbose_name='过期时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'verify_codes'
+        verbose_name = '验证码'
+        verbose_name_plural = '验证码'
+        indexes = [
+            models.Index(fields=['phone', 'code', 'purpose']),
+            models.Index(fields=['email', 'code', 'purpose']),
+        ]
+
+    def __str__(self):
+        target = self.phone or self.email
+        return f'{self.get_purpose_display()}[{target}]: {self.code}'
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() >= self.expires_at
+
+
+class VerifyConfig(models.Model):
+    """验证码登录配置（全局单例）"""
+    LOGIN_MODE_CHOICES = (
+        ('any', '手机或邮箱均可'),
+        ('phone_only', '仅手机验证码'),
+        ('email_only', '仅邮箱验证码'),
+    )
+
+    SMS_PROVIDER_CHOICES = (
+        ('console', '控制台输出（开发）'),
+        ('aliyun', '阿里云短信'),
+        ('tencent', '腾讯云短信'),
+    )
+
+    enable_phone_login = models.BooleanField(default=True, verbose_name='启用手机验证码登录')
+    enable_email_login = models.BooleanField(default=False, verbose_name='启用邮箱验证码登录')
+    login_mode = models.CharField(
+        max_length=20, choices=LOGIN_MODE_CHOICES, default='any',
+        verbose_name='登录模式'
+    )
+    code_length = models.PositiveIntegerField(default=6, verbose_name='验证码位数')
+    code_expire_seconds = models.PositiveIntegerField(default=300, verbose_name='验证码过期秒数')
+    is_active = models.BooleanField(default=True, verbose_name='启用验证码登录功能')
+
+    # ── 短信发信配置 ──
+    sms_provider = models.CharField(
+        max_length=20, choices=SMS_PROVIDER_CHOICES, default='console',
+        verbose_name='短信服务商'
+    )
+    # 阿里云 SMS
+    aliyun_access_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云 AccessKey')
+    aliyun_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云 SecretKey')
+    aliyun_sign_name = models.CharField(max_length=100, blank=True, default='', verbose_name='阿里云短信签名')
+    aliyun_template_code = models.CharField(max_length=100, blank=True, default='', verbose_name='阿里云短信模板码')
+    # 腾讯云 SMS
+    tencent_secret_id = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretId')
+    tencent_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretKey')
+    tencent_sdk_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云 SDK AppID')
+    tencent_sign_name = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云短信签名')
+    tencent_template_code = models.CharField(max_length=100, blank=True, default='', verbose_name='腾讯云短信模板码')
+
+    # ── 邮件发信配置 ──
+    email_host = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 服务器')
+    email_port = models.PositiveIntegerField(default=465, verbose_name='SMTP 端口')
+    email_host_user = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 用户名')
+    email_host_password = models.CharField(max_length=200, blank=True, default='', verbose_name='SMTP 密码')
+    email_use_tls = models.BooleanField(default=False, verbose_name='使用 TLS')
+    email_use_ssl = models.BooleanField(default=True, verbose_name='使用 SSL')
+    email_from = models.EmailField(blank=True, default='', verbose_name='发件人地址')
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'verify_config'
+        verbose_name = '验证码与发信配置'
+        verbose_name_plural = '验证码与发信配置'
+
+    def __str__(self):
+        return '验证码与发信配置（全局）'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and VerifyConfig.objects.exists():
+            return
+        super().save(*args, **kwargs)
+
+
+class CaptchaConfig(models.Model):
+    """人机验证配置（全局单例）"""
+    PROVIDER_CHOICES = (
+        ('none', '不启用'),
+        ('geetest', '极验 GEETEST'),
+        ('tencent', '腾讯云验证码'),
+        ('aliyun', '阿里云验证码'),
+        ('dingxiang', '顶象验证码'),
+        ('netease', '网易易盾验证码'),
+    )
+
+    provider = models.CharField(
+        max_length=20, choices=PROVIDER_CHOICES, default='none',
+        verbose_name='验证平台'
+    )
+    is_active = models.BooleanField(default=False, verbose_name='启用人机验证')
+
+    # 极验 GEETEST v4
+    geetest_captcha_id = models.CharField(max_length=200, blank=True, default='', verbose_name='极验 captcha_id')
+    geetest_captcha_key = models.CharField(max_length=200, blank=True, default='', verbose_name='极验 captcha_key')
+
+    # 腾讯云验证码
+    tencent_app_id = models.CharField(max_length=200, blank=True, default='', verbose_name='腾讯云 Captcha AppId')
+    tencent_secret_key = models.CharField(max_length=200, blank=True, default='',
+                                          verbose_name='腾讯云 Captcha SecretKey')
+
+    # 阿里云验证码
+    aliyun_app_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云验证码 AppKey')
+    aliyun_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='阿里云验证码 SecretKey')
+
+    # 顶象
+    dingxiang_app_id = models.CharField(max_length=200, blank=True, default='', verbose_name='顶象 appId')
+    dingxiang_app_secret = models.CharField(max_length=200, blank=True, default='', verbose_name='顶象 appSecret')
+
+    # 网易易盾
+    netease_captcha_id = models.CharField(max_length=200, blank=True, default='', verbose_name='易盾 captchaId')
+    netease_secret_key = models.CharField(max_length=200, blank=True, default='', verbose_name='易盾 secretKey')
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'captcha_config'
+        verbose_name = '人机验证配置'
+        verbose_name_plural = '人机验证配置'
+
+    def __str__(self):
+        return f'人机验证配置（{self.get_provider_display()}）'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and CaptchaConfig.objects.exists():
+            return
+        super().save(*args, **kwargs)

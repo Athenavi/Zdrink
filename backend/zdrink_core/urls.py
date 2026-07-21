@@ -1,3 +1,10 @@
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework_simplejwt.views import TokenRefreshView
+
 from apps.users.api import (
     RegisterView,
     LoginView,
@@ -7,12 +14,7 @@ from apps.users.api import (
     ChangePasswordView,
     get_current_user
 )
-from django.conf import settings
-from django.conf.urls.static import static
-from django.contrib import admin
-from django.urls import path, include
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenRefreshView
+from apps.users.verify_views import SendCodeView, LoginByCodeView, LoginModeView, CaptchaConfigView
 
 urlpatterns = [
     # Admin
@@ -32,6 +34,11 @@ urlpatterns = [
     path('api/auth/profile/', UserProfileView.as_view(), name='user_profile'),
     path('api/auth/profile/update/', UpdateProfileView.as_view(), name='update_profile'),
     path('api/auth/change-password/', ChangePasswordView.as_view(), name='change_password'),
+    # 验证码登录
+    path('api/auth/send-code/', SendCodeView.as_view(), name='send_code'),
+    path('api/auth/login-by-code/', LoginByCodeView.as_view(), name='login_by_code'),
+    path('api/auth/login-mode/', LoginModeView.as_view(), name='login_mode'),
+    path('api/auth/captcha-config/', CaptchaConfigView.as_view(), name='captcha_config'),
 
     # 公共API（不需要租户上下文）
     path('api/shops/', include('apps.shops.urls')),

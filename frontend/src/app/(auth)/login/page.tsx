@@ -1,9 +1,13 @@
 'use client';
 
-import {Suspense, useState} from 'react';
+import {Suspense, useCallback, useEffect, useRef, useState} from 'react';
 import {useRouter, useSearchParams} from 'next/navigation';
 import Link from 'next/link';
 import {useUserStore} from '@/stores/user';
+import apiClient from '@/lib/api';
+import CaptchaButton, {useCaptcha} from '@/components/CaptchaButton';
+
+type LoginTab = 'password' | 'code';
 
 export default function LoginPage() {
     return (
@@ -23,10 +27,132 @@ function LoginContent() {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // 密码登录
     const [formData, setFormData] = useState({
         username: '',
         password: ''
     });
+
+    // 验证码登录
+    const [loginTab, setLoginTab] = useState<LoginTab>('password');
+    const [codeTarget, setCodeTarget] = useState<'phone' | 'email'>('phone');
+    const [codePhone, setCodePhone] = useState('');
+    const [codeEmail, setCodeEmail] = useState('');
+    const [codeValue, setCodeValue] = useState('');
+    const [countdown, setCountdown] = useState(0);
+    const [loginMode, setLoginMode] = useState<{
+        enabled: boolean;
+        phone: boolean;
+        email: boolean;
+        mode: string;
+    } | null>(null);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const captcha = useCaptcha();
+
+    // 获取登录模式配置
+    useEffect(() => {
+        apiClient.get('/auth/login-mode/').then(res => {
+            setLoginMode(res.data);
+        }).catch(() => {
+            setLoginMode({enabled: false, phone: false, email: false, mode: 'any'});
+        });
+    }, []);
+
+    // 倒计时清理
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
+
+    // 发送验证码
+    const handleSendCode = useCallback(async () => {
+        const target = codePhone || codeEmail;
+        if (!target) {
+            setError('请先输入手机号或邮箱');
+            return;
+        }
+
+        // 启用了人机验证但尚未验证 → 自动触发
+        if (captcha.result?.provider !== 'none' && !captcha.isVerified) {
+            const ok = await captcha.execute();
+            if (!ok) {
+                setError('请先完成人机验证');
+                return;
+            }
+        }
+
+        setLoading(true);
+        setError('');
+        try {
+            const body: Record<string, any> = {
+                phone: codePhone,
+                email: codeEmail,
+                purpose: 'login',
+            };
+            if (captcha.result && captcha.result.provider !== 'none') {
+                body.captcha_provider = captcha.result.provider;
+                if (captcha.result.lot_number) body.lot_number = captcha.result.lot_number;
+                if (captcha.result.captcha_output) body.captcha_output = captcha.result.captcha_output;
+                if (captcha.result.pass_token) body.pass_token = captcha.result.pass_token;
+                if (captcha.result.gen_time) body.gen_time = captcha.result.gen_time;
+            }
+            await apiClient.post('/auth/send-code/', body);
+            // 开始倒计时
+            setCountdown(60);
+            timerRef.current = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        if (timerRef.current) clearInterval(timerRef.current);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } catch (err: any) {
+            const msg = err.response?.data?.non_field_errors?.[0]
+                || err.response?.data?.detail
+                || err.response?.data?.message
+                || '发送验证码失败';
+            setError(msg);
+        } finally {
+            setLoading(false);
+        }
+    }, [codePhone, codeEmail, captcha]);
+
+    // 验证码登录
+    const handleCodeLogin = useCallback(async () => {
+        if (!codeValue) {
+            setError('请输入验证码');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            const res = await apiClient.post('/auth/login-by-code/', {
+                phone: codePhone,
+                email: codeEmail,
+                code: codeValue,
+            });
+            const {access, refresh, user} = res.data;
+            // 设置 token 和用户信息
+            useUserStore.getState().setToken(access);
+            document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`;
+            useUserStore.setState({userInfo: user});
+            const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect') || '/home';
+            router.push(callbackUrl);
+        } catch (err: any) {
+            const msg = err.response?.data?.non_field_errors?.[0]
+                || err.response?.data?.detail
+                || err.response?.data?.message
+                || '验证码登录失败';
+            setError(msg);
+        } finally {
+            setLoading(false);
+        }
+    }, [codePhone, codeEmail, codeValue, router, searchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -142,50 +268,193 @@ function LoginContent() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                                用户名
-                            </label>
-                            <input
-                                id="username"
-                                type="text"
-                                value={formData.username}
-                                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                                placeholder="请输入用户名（例如：admin）"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                            />
-                            <p className="mt-1 text-xs text-gray-500">测试账号：admin / admin123456</p>
+                    {/* 登录方式 Tab */}
+                    {loginMode?.enabled && (
+                        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setLoginTab('password')}
+                                className={`flex-1 py-2 text-sm rounded-md font-medium transition-colors ${
+                                    loginTab === 'password'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                密码登录
+                            </button>
+                            <button
+                                onClick={() => setLoginTab('code')}
+                                className={`flex-1 py-2 text-sm rounded-md font-medium transition-colors ${
+                                    loginTab === 'code'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                验证码登录
+                            </button>
                         </div>
+                    )}
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                密码
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={formData.password}
-                                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                placeholder="请输入密码"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                            />
+                    {/* 密码登录表单 */}
+                    {loginTab === 'password' && (
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label htmlFor="username"
+                                       className="block text-sm font-medium text-gray-700 mb-1">
+                                    用户名
+                                </label>
+                                <input
+                                    id="username"
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                                    placeholder="请输入用户名（例如：admin）"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                />
+                                <p className="mt-1 text-xs text-gray-500">测试账号：admin / admin123456</p>
+                            </div>
+
+                            <div>
+                                <label htmlFor="password"
+                                       className="block text-sm font-medium text-gray-700 mb-1">
+                                    密码
+                                </label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                    placeholder="请输入密码"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                                    loading
+                                        ? 'bg-blue-400 cursor-not-allowed'
+                                        : 'bg-blue-500 hover:bg-blue-600'
+                                }`}
+                            >
+                                {loading ? '登录中...' : '登录'}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* 验证码登录表单 */}
+                    {loginTab === 'code' && (
+                        <div className="space-y-4">
+                            {/* 方式选择（仅 any 模式显示切换） */}
+                            {loginMode?.mode === 'any' && (
+                                <div className="flex bg-gray-100 rounded-lg p-0.5">
+                                    <button
+                                        onClick={() => {
+                                            setCodeTarget('phone');
+                                            setCodeEmail('');
+                                        }}
+                                        className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                                            codeTarget === 'phone'
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-gray-500'
+                                        }`}
+                                    >
+                                        手机号登录
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setCodeTarget('email');
+                                            setCodePhone('');
+                                        }}
+                                        className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                                            codeTarget === 'email'
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-gray-500'
+                                        }`}
+                                    >
+                                        邮箱登录
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 手机号（phone_only 或 any+phone 时显示） */}
+                            {(loginMode?.mode === 'phone_only' ||
+                                (loginMode?.mode === 'any' && codeTarget === 'phone')) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        手机号
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={codePhone}
+                                        onChange={e => setCodePhone(e.target.value)}
+                                        placeholder="请输入手机号"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
+                            {/* 邮箱（email_only 或 any+email 时显示） */}
+                            {(loginMode?.mode === 'email_only' ||
+                                (loginMode?.mode === 'any' && codeTarget === 'email')) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        邮箱
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={codeEmail}
+                                        onChange={e => setCodeEmail(e.target.value)}
+                                        placeholder="请输入邮箱"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
+                            {/* 验证码 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    验证码
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={codeValue}
+                                        onChange={e => setCodeValue(e.target.value)}
+                                        placeholder="请输入验证码"
+                                        maxLength={6}
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={handleSendCode}
+                                        disabled={loading || countdown > 0 || (!codePhone && !codeEmail)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                                            countdown > 0
+                                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                                        } disabled:opacity-50`}
+                                    >
+                                        {countdown > 0 ? `${countdown}s` : '发送验证码'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 人机验证 */}
+                            <CaptchaButton captcha={captcha}/>
+
+                            <button
+                                onClick={handleCodeLogin}
+                                disabled={loading || !codeValue}
+                                className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                                    loading
+                                        ? 'bg-blue-400 cursor-not-allowed'
+                                        : 'bg-blue-500 hover:bg-blue-600'
+                                } disabled:opacity-50`}
+                            >
+                                {loading ? '登录中...' : '登录'}
+                            </button>
                         </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
-                                loading
-                                    ? 'bg-blue-400 cursor-not-allowed'
-                                    : 'bg-blue-500 hover:bg-blue-600'
-                            }`}
-                        >
-                            {loading ? '登录中...' : '登录'}
-                        </button>
-                    </form>
+                    )}
 
                     {/* 第三方登录 */}
                     <div className="mt-6">
@@ -223,7 +492,7 @@ function LoginContent() {
                     </div>
 
                     {/* 链接 */}
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 text-center space-y-2">
                         <div className="flex items-center justify-center space-x-4">
                             <Link
                                 href="/register"
@@ -243,6 +512,15 @@ function LoginContent() {
                                 忘记密码
                             </a>
                         </div>
+                        <p className="text-xs text-gray-400">
+                            想成为商家？
+                            <Link
+                                href="/register/merchant"
+                                className="text-blue-500 hover:text-blue-600 font-medium ml-1"
+                            >
+                                商家入驻
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>

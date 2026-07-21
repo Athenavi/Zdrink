@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from django_tenants.admin import TenantAdminMixin
 
-from .models import Shop, Domain, ShopStaff, ShopSettings
+from .models import Shop, Domain, ShopStaff, ShopSettings, ShopApply, Table
 
 User = get_user_model()
 
@@ -74,9 +75,6 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
         return request.user.is_superuser
 
 
-from .models import Table
-
-
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
     list_display = ['table_number', 'table_name', 'shop', 'table_type', 'status', 'min_capacity', 'max_capacity']
@@ -108,3 +106,108 @@ class ShopStaffAdmin(TenantAdminMixin, admin.ModelAdmin):
 class ShopSettingsAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ('shop', 'auto_confirm_order', 'points_enabled', 'updated_at')
     search_fields = ('shop__name',)
+
+
+@admin.register(ShopApply)
+class ShopApplyAdmin(admin.ModelAdmin):
+    list_display = ['shop_name', 'contact_name', 'contact_phone', 'status', 'created_at']
+    list_filter = ['status', 'shop_type', 'created_at']
+    search_fields = ['shop_name', 'contact_name', 'contact_phone', 'contact_email']
+    readonly_fields = ['contact_name', 'contact_phone', 'contact_email',
+                       'shop_name', 'shop_type', 'shop_address', 'shop_description',
+                       'created_at']
+    actions = ['approve_applies', 'reject_applies']
+
+    fieldsets = (
+        ('申请人信息', {
+            'fields': ('contact_name', 'contact_phone', 'contact_email'),
+        }),
+        ('店铺信息', {
+            'fields': ('shop_name', 'shop_type', 'shop_address', 'shop_description'),
+        }),
+        ('审核信息', {
+            'fields': ('status', 'review_remark', 'reviewer', 'reviewed_at'),
+        }),
+    )
+
+    def approve_applies(self, request, queryset):
+        """审核通过：创建店铺、账号、员工记录、设置"""
+        from django.contrib.auth.hashers import make_password
+
+        pending = queryset.filter(status='pending')
+        count = 0
+        for apply in pending:
+            try:
+                # 1. 创建店主用户
+                username = f"owner_{apply.shop_name[:10]}_{apply.id}"
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}_{counter}"
+                    counter += 1
+
+                owner = User.objects.create_user(
+                    username=username,
+                    email=apply.contact_email,
+                    phone=apply.contact_phone,
+                    password=apply.account_password,
+                    user_type='shop_owner',
+                )
+
+                # 2. 创建店铺（Tenant）
+                import re
+                schema_name = re.sub(r'[^a-zA-Z0-9_]', '_', f"shop_{apply.shop_name[:20]}_{apply.id}")
+                shop = Shop.objects.create(
+                    schema_name=schema_name,
+                    name=apply.shop_name,
+                    shop_type=apply.shop_type,
+                    address=apply.shop_address or '',
+                    description=apply.shop_description or '',
+                    phone=apply.contact_phone,
+                    email=apply.contact_email,
+                )
+
+                # 3. 创建店主员工记录
+                ShopStaff.objects.create(
+                    user=owner,
+                    shop=shop,
+                    role='owner',
+                    permissions={'all': True},
+                )
+
+                # 4. 创建店铺设置
+                ShopSettings.objects.create(shop=shop)
+
+                # 5. 更新申请状态
+                apply.status = 'approved'
+                apply.reviewer = request.user
+                apply.reviewed_at = timezone.now()
+                apply.save()
+
+                count += 1
+            except Exception as e:
+                self.message_user(request, f'审核 [{apply.shop_name}] 失败: {e}', level='ERROR')
+
+        if count:
+            self.message_user(request, f'已通过 {count} 个入驻申请')
+
+    approve_applies.short_description = '✅ 通过选中的入驻申请'
+
+    def reject_applies(self, request, queryset):
+        """拒绝入驻申请"""
+        updated = queryset.filter(status='pending').update(
+            status='rejected',
+            reviewer=request.user,
+            reviewed_at=timezone.now(),
+        )
+        self.message_user(request, f'已拒绝 {updated} 个入驻申请')
+
+    reject_applies.short_description = '❌ 拒绝选中的入驻申请'
+
+    def has_add_permission(self, request):
+        return False  # 仅通过前台提交
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.status != 'pending':
+            return self.readonly_fields + ['review_remark']
+        return self.readonly_fields
