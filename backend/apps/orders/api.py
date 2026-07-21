@@ -139,9 +139,6 @@ class OrderViewSet(ModelViewSet):
     filterset_fields = ['status', 'order_type', 'payment_status']
 
     def get_queryset(self):
-        # 基础查询集
-        queryset = Order.objects.all()
-
         # 如果是店铺员工或管理员，可以看到店铺的订单
         if hasattr(self.request, 'tenant') and self.request.tenant:
             queryset = Order.objects.filter(shop=self.request.tenant).select_related(

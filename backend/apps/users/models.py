@@ -84,16 +84,15 @@ class User(AbstractUser):
             super().save(update_fields=['membership_number', 'referral_code'])
 
     def generate_membership_number(self):
-        import random
+        import secrets
         # 使用当前用户的id来生成会员号
-        return f"M{self.id:08d}{random.randint(1000, 9999)}"
+        return f"M{self.id:08d}{secrets.randbelow(9000) + 1000}"
 
     def generate_referral_code(self):
-        import random
+        import secrets
         import string
-        # 使用用户id作为种子的一部分，确保唯一性
-        random.seed(self.id)
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        # 使用密码学安全的随机数生成器
+        return ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
 
 def get_anonymous_user_instance():
@@ -331,7 +330,8 @@ class SocialLoginConfig(models.Model):
     def save(self, *args, **kwargs):
         """单例模式：只允许存在一条记录"""
         if not self.pk and SocialLoginConfig.objects.exists():
-            return  # 已有配置，禁止创建第二条
+            from django.core.exceptions import ValidationError
+            raise ValidationError('已存在第三方登录配置，不能创建多条')
         super().save(*args, **kwargs)
 
 
@@ -432,7 +432,8 @@ class VerifyConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk and VerifyConfig.objects.exists():
-            return
+            from django.core.exceptions import ValidationError
+            raise ValidationError('已存在验证码配置，不能创建多条')
         super().save(*args, **kwargs)
 
 
@@ -487,5 +488,6 @@ class CaptchaConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk and CaptchaConfig.objects.exists():
-            return
+            from django.core.exceptions import ValidationError
+            raise ValidationError('已存在人机验证配置，不能创建多条')
         super().save(*args, **kwargs)

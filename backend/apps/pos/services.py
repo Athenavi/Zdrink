@@ -293,6 +293,7 @@ class BarcodeService:
 
         try:
             config = MembershipLevelConfig.objects.get(
+                shop=self.shop,
                 level=membership_level,
                 is_active=True
             )

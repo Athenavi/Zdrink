@@ -115,8 +115,11 @@ class WechatPaymentService(PaymentService):
                     private_key = f.read()
 
                 # 构建默认回调URL
-                from django.conf import settings
                 default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/wechat/"
+
+                # 确保证书目录存在
+                cert_dir = os.path.join(settings.BASE_DIR, 'certs')
+                os.makedirs(cert_dir, exist_ok=True)
 
                 self.wechatpay = WeChatPay(
                     wechatpay_type=WeChatPayType.NATIVE,
@@ -126,7 +129,7 @@ class WechatPaymentService(PaymentService):
                     appid=self.config.app_id,
                     apiv3_key=self.config.api_key,
                     notify_url=self.config.notify_url or default_notify_url,
-                    cert_dir=''
+                    cert_dir=cert_dir
                 )
             except Exception as e:
                 raise Exception(f"微信支付初始化失败: {str(e)}")
