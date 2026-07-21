@@ -9,6 +9,9 @@ django-extensions==3.2.3
 django-guardian==2.4.0
 drf-spectacular==0.28.0
 django-simpleui==2025.3.1  # Django后台主题美化
+# 安全加密
+django-encrypted-model-fields==0.6.5
+
 # 支付SDK
 wechatpayv3==1.1.0
 python-alipay-sdk==3.3.0

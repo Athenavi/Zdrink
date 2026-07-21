@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
 User = get_user_model()
 
@@ -28,7 +29,7 @@ class PaymentMethod(models.Model):
     config = models.JSONField(default=dict, verbose_name='支付配置')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='shop_payment_methods')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='shop_payment_methods')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -58,7 +59,7 @@ class PaymentTransaction(models.Model):
     out_trade_no = models.CharField(max_length=64, unique=True, verbose_name='商户订单号')
 
     # 关联订单
-    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payment_transactions')
+    order = models.ForeignKey('orders.Order', on_delete=models.PROTECT, related_name='payment_transactions')
 
     # 支付信息
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
@@ -155,12 +156,12 @@ class RefundRequest(models.Model):
 
 class WechatPayConfig(models.Model):
     """微信支付配置"""
-    shop = models.OneToOneField('shops.Shop', on_delete=models.CASCADE, related_name='wechat_pay_config')
+    shop = models.OneToOneField('shops.Shop', on_delete=models.PROTECT, related_name='wechat_pay_config')
 
     # 基础配置
     app_id = models.CharField(max_length=64, verbose_name='AppID')
     mch_id = models.CharField(max_length=32, verbose_name='商户号')
-    api_key = models.CharField(max_length=128, verbose_name='API密钥')
+    api_key = EncryptedCharField(max_length=128, verbose_name='API密钥')
 
     # 证书路径
     cert_path = models.CharField(max_length=255, blank=True, verbose_name='证书路径')
@@ -191,12 +192,12 @@ class WechatPayConfig(models.Model):
 
 class AlipayConfig(models.Model):
     """支付宝配置"""
-    shop = models.OneToOneField('shops.Shop', on_delete=models.CASCADE, related_name='alipay_config')
+    shop = models.OneToOneField('shops.Shop', on_delete=models.PROTECT, related_name='alipay_config')
 
     # 基础配置
     app_id = models.CharField(max_length=32, verbose_name='AppID')
-    app_private_key = models.TextField(verbose_name='应用私钥')
-    alipay_public_key = models.TextField(verbose_name='支付宝公钥')
+    app_private_key = EncryptedTextField(verbose_name='应用私钥')
+    alipay_public_key = EncryptedTextField(verbose_name='支付宝公钥')
 
     # 支付场景
     enable_app = models.BooleanField(default=True, verbose_name='启用APP支付')

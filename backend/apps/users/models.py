@@ -122,7 +122,7 @@ class MembershipLevelConfig(models.Model):
     benefits = models.JSONField(default=dict, verbose_name='会员权益')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='membership_levels')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='membership_levels')
 
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -151,7 +151,7 @@ class PointsLog(models.Model):
         ('adjust', '人工调整'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='points_logs')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='points_logs')
     points_type = models.CharField(max_length=20, choices=POINTS_TYPE_CHOICES, verbose_name='积分类型')
     points = models.IntegerField(verbose_name='积分变化')
     current_points = models.IntegerField(verbose_name='当前积分')
@@ -209,7 +209,7 @@ class PointsRule(models.Model):
 
 class MemberRecharge(models.Model):
     """会员充值"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recharges')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='recharges')
     recharge_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='充值金额')
     gift_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='赠送金额')
     gift_points = models.IntegerField(default=0, verbose_name='赠送积分')
@@ -237,7 +237,7 @@ class MemberRecharge(models.Model):
 
 class UserAddress(models.Model):
     """用户地址"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='addresses')
     name = models.CharField(max_length=100, verbose_name='收货人姓名')
     phone = models.CharField(max_length=20, verbose_name='联系电话')
     province = models.CharField(max_length=50, verbose_name='省份')
@@ -280,7 +280,7 @@ class SocialAuth(models.Model):
         ('alipay', '支付宝'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social_auths')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='social_auths')
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, verbose_name='提供商')
     openid = models.CharField(max_length=128, verbose_name='OpenID/用户ID')
     unionid = models.CharField(max_length=128, blank=True, null=True, verbose_name='UnionID')

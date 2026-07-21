@@ -75,8 +75,8 @@ class ShopStaff(models.Model):
         ('cashier', '收银员'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shop_staff')
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='staff')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='shop_staff')
+    shop = models.ForeignKey(Shop, on_delete=models.PROTECT, related_name='staff')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='staff')
     is_active = models.BooleanField(default=True)
     permissions = models.JSONField(default=dict, verbose_name='权限配置')
@@ -142,7 +142,7 @@ class Table(models.Model):
         ('outdoor', '户外桌'),
     )
 
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='tables')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='tables')
     table_number = models.CharField(max_length=20, verbose_name='桌台号')
     table_name = models.CharField(max_length=50, blank=True, verbose_name='桌台名称')
     table_type = models.CharField(max_length=20, choices=TABLE_TYPE_CHOICES, default='standard',

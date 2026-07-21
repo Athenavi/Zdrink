@@ -11,7 +11,7 @@ class CashierShift(models.Model):
         ('completed', '已结束'),
     )
 
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='cashier_shifts')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='cashier_shifts')
     cashier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='收银员')
     shift_number = models.CharField(max_length=50, verbose_name='班次号')
     start_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='起始金额')

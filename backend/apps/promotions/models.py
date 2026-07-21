@@ -62,7 +62,7 @@ class Coupon(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='coupons')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='coupons')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -96,7 +96,7 @@ class UserCoupon(models.Model):
         ('expired', '已过期'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_coupons')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='user_coupons')
     coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, related_name='user_coupons')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
 
@@ -135,7 +135,7 @@ class CouponRule(models.Model):
     config = models.JSONField(default=dict, verbose_name='规则配置')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='coupon_rules')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='coupon_rules')
 
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -220,7 +220,7 @@ class Promotion(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='promotions')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='promotions')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

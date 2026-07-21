@@ -52,7 +52,7 @@ class Printer(models.Model):
     feie_ukey = models.CharField(max_length=200, blank=True, verbose_name='飞鹅云UKEY')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='printers')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='printers')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -94,7 +94,7 @@ class PrintTemplate(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='print_templates')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='print_templates')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

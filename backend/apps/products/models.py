@@ -13,7 +13,7 @@ class Category(models.Model):
     description = models.TextField(blank=True, verbose_name='分类描述')
     parent = models.ForeignKey(
         'self',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='children',
@@ -24,7 +24,7 @@ class Category(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='categories')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='categories')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,7 +92,7 @@ class Product(models.Model):
     preparation_time = models.IntegerField(default=10, verbose_name='准备时间(分钟)')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='products')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='products')
 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_products')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -115,7 +115,7 @@ class Specification(models.Model):
     sort_order = models.IntegerField(default=0, verbose_name='排序')
 
     # 多租户关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='specifications')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='specifications')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
