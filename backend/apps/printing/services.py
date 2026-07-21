@@ -236,9 +236,10 @@ class NetworkPrintService(BasePrintService):
 
     def print_text(self, content, copies=1):
         """网络打印文本"""
-        try:
-            import socket
+        import socket
 
+        sock = None
+        try:
             # 连接网络打印机
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(10)
@@ -248,12 +249,16 @@ class NetworkPrintService(BasePrintService):
             for i in range(copies):
                 sock.send(content.encode('gbk'))  # 使用GBK编码
 
-            sock.close()
-
             return {'success': True, 'message': '打印完成'}
 
         except Exception as e:
             return {'success': False, 'message': f'网络打印错误: {str(e)}'}
+        finally:
+            if sock:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
 
 
 class PrintServiceFactory:
@@ -289,8 +294,37 @@ class PrintContentGenerator:
     @staticmethod
     def _render_template(template, order):
         """渲染模板"""
-        # 实现模板渲染逻辑
-        pass
+        from string import Template
+
+        # 构建模板变量上下文
+        context = {
+            'shop_name': order.shop.name,
+            'order_number': order.order_number,
+            'created_at': order.created_at.strftime('%Y-%m-%d %H:%M'),
+            'customer_name': order.customer_name or '',
+            'customer_phone': order.customer_phone or '',
+            'table_number': order.table_number or '',
+            'subtotal': str(order.subtotal),
+            'delivery_fee': str(order.delivery_fee),
+            'discount_amount': str(order.discount_amount),
+            'total_amount': str(order.total_amount),
+            'payment_method': order.payment_method or '',
+            'payment_status': '已支付' if order.payment_status else '未支付',
+            'paid_at': order.paid_at.strftime('%H:%M') if order.paid_at else '',
+            'order_type': order.get_order_type_display() if hasattr(order, 'get_order_type_display') else '',
+            'remark': order.remark or '',
+        }
+
+        # 渲染各部分
+        parts = []
+        if template.header_template:
+            parts.append(Template(template.header_template).safe_substitute(context))
+        if template.content_template:
+            parts.append(Template(template.content_template).safe_substitute(context))
+        if template.footer_template:
+            parts.append(Template(template.footer_template).safe_substitute(context))
+
+        return "\n".join(parts)
 
     @staticmethod
     def _generate_default_order_content(order):

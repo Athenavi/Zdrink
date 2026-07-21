@@ -84,6 +84,9 @@ class Product(models.Model):
     is_featured = models.BooleanField(default=False, verbose_name='推荐商品')
     sort_order = models.IntegerField(default=0, verbose_name='排序')
 
+    # 条码
+    barcode = models.CharField(max_length=100, blank=True, null=True, unique=True, verbose_name='条形码')
+
     # 销售属性
     allow_customization = models.BooleanField(default=False, verbose_name='允许定制')
     preparation_time = models.IntegerField(default=10, verbose_name='准备时间(分钟)')
@@ -159,6 +162,7 @@ class ProductSKU(models.Model):
         related_name='skus'
     )
     sku_code = models.CharField(max_length=100, unique=True, verbose_name='SKU编码')
+    barcode = models.CharField(max_length=100, blank=True, null=True, unique=True, verbose_name='条形码')
 
     # 价格信息
     price = models.DecimalField(

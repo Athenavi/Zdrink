@@ -2,6 +2,7 @@ import uuid
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 
@@ -75,10 +76,15 @@ class POSService:
                         customization=item_data.get('customization', '')
                     )
 
-                    # 更新库存
+                    # 更新库存（原子操作，防止并发超卖）
                     if sku_id:
-                        sku.stock_quantity = max(0, sku.stock_quantity - quantity)
-                        sku.save()
+                        updated = ProductSKU.objects.filter(
+                            id=sku.id,
+                            stock_quantity__gte=quantity
+                        ).update(stock_quantity=F('stock_quantity') - quantity)
+
+                        if updated == 0:
+                            raise ValueError(f"商品 {product.name} 库存不足")
 
                 except (Product.DoesNotExist, ProductSKU.DoesNotExist):
                     continue

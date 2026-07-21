@@ -36,6 +36,13 @@ class CouponService:
                 raise ValueError("已超过领取限制")
 
             with transaction.atomic():
+                # 锁定优惠券行，防止并发超发
+                coupon = Coupon.objects.select_for_update().get(pk=coupon.pk)
+
+                # 二次校验（锁定后确认仍有剩余）
+                if coupon.used_quantity >= coupon.total_quantity:
+                    raise ValueError("优惠券已被领完")
+
                 # 创建用户优惠券
                 user_coupon = UserCoupon.objects.create(
                     user=self.user,
@@ -105,7 +112,10 @@ class CouponService:
 
         for rule in rules:
             if self._check_rule_condition(rule):
-                self.claim_coupon(rule.coupon.code)
+                try:
+                    self.claim_coupon(rule.coupon.code)
+                except ValueError:
+                    pass  # 已领取或规则不满足，静默跳过
 
     def _check_rule_condition(self, rule):
         """检查规则条件"""

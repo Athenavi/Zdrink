@@ -130,6 +130,8 @@ export async function apiRequest<T = any>(
     endpoint: string,
     options?: AxiosRequestConfig
 ): Promise<T> {
-    const response = await apiClient.get<T>(endpoint, options);
+    const method = (options?.method || 'get').toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+    const config: AxiosRequestConfig = {...options, method};
+    const response = await apiClient.request<T>({...config, url: endpoint});
     return response.data;
 }

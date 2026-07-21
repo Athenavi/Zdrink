@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {useEffect, useState} from 'react';
 import {useRouter} from 'next/navigation';
@@ -35,7 +35,7 @@ export default function OrdersPage() {
     useEffect(() => {
         if (!userStore.isLoggedIn) {
             // 未登录，重定向到登录页
-            router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/order/list')}`);
+            router.replace(`/login?callbackUrl=${encodeURIComponent('/order/list')}`);
             return;
         }
     }, [userStore.isLoggedIn]);
@@ -66,7 +66,7 @@ export default function OrdersPage() {
             // 如果是 401 或 403，可能是 token 失效，清除登录状态
             if (error.response?.status === 401 || error.response?.status === 403) {
                 userStore.logout();
-                router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/order/list')}`);
+                router.replace(`/login?callbackUrl=${encodeURIComponent('/order/list')}`);
             }
         } finally {
             setLoading(false);

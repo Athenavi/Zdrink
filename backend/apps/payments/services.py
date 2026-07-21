@@ -1,9 +1,13 @@
 import base64
+import os
 import time
 from decimal import Decimal
 from io import BytesIO
 
 import qrcode
+from django.conf import settings
+from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from wechatpayv3 import WeChatPay, WeChatPayType
 
@@ -86,13 +90,18 @@ class WechatPaymentService(PaymentService):
         self.wechatpay = None
 
         if self.config and self.config.is_active:
+            # 检查证书文件是否存在
+            cert_path = self.config.cert_path
+            if not cert_path or not os.path.isfile(cert_path):
+                raise Exception(f"微信支付证书文件不存在: {cert_path}")
+
             try:
-                # 初始化微信支付V3 SDK
-                with open(self.config.cert_path, 'r') as f:
+                with open(cert_path, 'r') as f:
                     private_key = f.read()
 
                 # 构建默认回调URL
-                default_notify_url = f"https://yourdomain.com/api/payments/callback/wechat/"
+                from django.conf import settings
+                default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/wechat/"
 
                 self.wechatpay = WeChatPay(
                     wechatpay_type=WeChatPayType.NATIVE,
@@ -270,6 +279,10 @@ class WechatPaymentService(PaymentService):
             except PaymentTransaction.DoesNotExist:
                 return False
 
+            # 幂等性检查：已支付的交易忽略重复回调
+            if transaction.status == 'paid':
+                return True
+
             # 更新支付状态
             if trade_state == 'SUCCESS':
                 transaction.status = 'paid'
@@ -278,11 +291,12 @@ class WechatPaymentService(PaymentService):
                 transaction.payment_data = result
                 transaction.save()
 
-                # 更新订单状态
+                # 更新订单状态（仅当订单仍为 pending 时设置 paid，避免回退已流转的状态）
                 order = transaction.order
+                if order.status == 'pending':
+                    order.status = 'paid'
                 order.payment_status = True
                 order.paid_at = timezone.now()
-                order.status = 'paid'
                 order.save()
 
                 # 订单支付成功后给予积分奖励
@@ -336,8 +350,9 @@ class AlipayPaymentService(PaymentService):
                 from alipay import AliPay
 
                 # 构建默认URL
-                default_notify_url = f"https://yourdomain.com/api/payments/callback/alipay/"
-                default_return_url = f"https://yourdomain.com/payment/result/"
+                from django.conf import settings
+                default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/alipay/"
+                default_return_url = f"{settings.SITE_BASE_URL}/payment/result/"
 
                 # 判断是否为沙箱环境（根据AppID前缀）
                 is_sandbox = self.config.app_id.startswith('9021') or self.config.app_id.startswith('20210001')
@@ -351,13 +366,11 @@ class AlipayPaymentService(PaymentService):
                     debug=is_sandbox  # 沙箱环境设为True，正式环境设为False
                 )
 
-                # 如果是沙箱环境，设置沙箱网关
-                if is_sandbox:
-                    self.alipay._gateway = "https://openapi-sandbox.dl.alipaydev.com/gateway.do"
-                    print(f"✓ 支付宝沙箱模式已启用")
-                else:
-                    self.alipay._gateway = "https://openapi.alipay.com/gateway.do"
-                    print(f"✓ 支付宝正式模式已启用")
+                # 设置支付宝网关（优先使用settings配置，允许运维覆盖）
+                self.alipay._gateway = getattr(settings, 'ALIPAY_GATEWAY', None) or (
+                    "https://openapi-sandbox.dl.alipaydev.com/gateway.do" if is_sandbox
+                    else "https://openapi.alipay.com/gateway.do"
+                )
 
             except Exception as e:
                 raise Exception(f"支付宝初始化失败: {str(e)}")
@@ -399,8 +412,8 @@ class AlipayPaymentService(PaymentService):
             out_trade_no = order.order_number
 
             # 构建默认URL
-            default_return_url = f"https://yourdomain.com/payment/result/"
-            default_notify_url = f"https://yourdomain.com/api/payments/callback/alipay/"
+            default_return_url = f"{settings.SITE_BASE_URL}/payment/result/"
+            default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/alipay/"
 
             # 调用支付宝接口
             order_string = self.alipay.api_alipay_trade_app_pay(
@@ -428,8 +441,8 @@ class AlipayPaymentService(PaymentService):
             out_trade_no = order.order_number
 
             # 构建默认URL
-            default_return_url = f"https://yourdomain.com/payment/result/"
-            default_notify_url = f"https://yourdomain.com/api/payments/callback/alipay/"
+            default_return_url = f"{settings.SITE_BASE_URL}/payment/result/"
+            default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/alipay/"
 
             # 生成支付URL
             order_string = self.alipay.api_alipay_trade_wap_pay(
@@ -441,7 +454,7 @@ class AlipayPaymentService(PaymentService):
             )
 
             # 拼接完整的支付URL
-            pay_url = f"https://openapi.alipay.com/gateway.do?{order_string}"
+            pay_url = f"{self.alipay._gateway}?{order_string}"
 
             return {
                 'payment_type': 'wap',
@@ -460,8 +473,8 @@ class AlipayPaymentService(PaymentService):
             out_trade_no = order.order_number
 
             # 构建默认URL
-            default_return_url = f"https://yourdomain.com/payment/result/"
-            default_notify_url = f"https://yourdomain.com/api/payments/callback/alipay/"
+            default_return_url = f"{settings.SITE_BASE_URL}/payment/result/"
+            default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/alipay/"
 
             # 生成支付URL
             order_string = self.alipay.api_alipay_trade_page_pay(
@@ -473,7 +486,7 @@ class AlipayPaymentService(PaymentService):
             )
 
             # 拼接完整的支付URL
-            pay_url = f"https://openapi.alipay.com/gateway.do?{order_string}"
+            pay_url = f"{self.alipay._gateway}?{order_string}"
 
             return {
                 'payment_type': 'pc',
@@ -590,15 +603,19 @@ class BalancePaymentService(PaymentService):
 
     def create_payment(self, order, request):
         """创建余额支付"""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         user = request.user
 
-        # 检查用户余额
-        if not hasattr(user, 'balance') or user.balance < order.total_amount:
-            raise Exception("余额不足")
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user.pk)
 
-        # 扣除余额
-        user.balance -= order.total_amount
-        user.save()
+            if user.balance < order.total_amount:
+                raise Exception("余额不足")
+
+            user.balance = F('balance') - order.total_amount
+            user.save(update_fields=['balance'])
+            user.refresh_from_db()
 
         return {
             'payment_type': 'balance',
@@ -610,11 +627,17 @@ class BalancePaymentService(PaymentService):
         """余额支付无需回调"""
         return True
 
-    def refund(self, transaction, refund_amount, reason):
+    def refund(self, transaction_ref, refund_amount, reason):
         """余额退款"""
-        user = transaction.order.user
-        user.balance += refund_amount
-        user.save()
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = transaction_ref.order.user
+
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user.pk)
+            user.balance = F('balance') + refund_amount
+            user.save(update_fields=['balance'])
+            user.refresh_from_db()
 
         return {
             'message': '余额退款成功',
@@ -628,22 +651,26 @@ class PointsPaymentService(PaymentService):
 
     def create_payment(self, order, request):
         """创建积分支付"""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         user = request.user
         points_needed = int(order.total_amount * 100)  # 假设1元=100积分
 
-        # 检查用户积分
-        if not hasattr(user, 'points') or user.points < points_needed:
-            raise Exception("积分不足")
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user.pk)
 
-        # 扣除积分
-        user.points -= points_needed
-        user.save()
+            if user.available_points < points_needed:
+                raise Exception("积分不足")
+
+            user.available_points = F('available_points') - points_needed
+            user.save(update_fields=['available_points'])
+            user.refresh_from_db()
 
         return {
             'payment_type': 'points',
             'message': '积分支付成功',
             'points_used': points_needed,
-            'remaining_points': user.points
+            'remaining_points': user.available_points
         }
 
     def handle_callback(self, request):
@@ -652,15 +679,17 @@ class PointsPaymentService(PaymentService):
 
     def refund(self, transaction, refund_amount, reason):
         """积分退款"""
+        from django.db.models import F
         user = transaction.order.user
         points_to_refund = int(refund_amount * 100)
-        user.points += points_to_refund
-        user.save()
+        user.available_points = F('available_points') + points_to_refund
+        user.save(update_fields=['available_points'])
+        user.refresh_from_db()
 
         return {
             'message': '积分退款成功',
             'points_refunded': points_to_refund,
-            'new_points': user.points
+            'new_points': user.available_points
         }
 
 

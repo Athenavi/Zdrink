@@ -19,6 +19,7 @@ django-tenants
 psycopg2-binary
 django-guardian
 django-role-permissions
+django-simpleui  # Django后台主题美化
 # 支付SDK
 wechatpayv3
 python-alipay-sdk

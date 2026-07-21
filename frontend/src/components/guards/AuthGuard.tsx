@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
-import {useEffect, useState} from 'react';
+import {useEffect, useRef} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
-import {useSession} from 'next-auth/react';
+import {useUserStore} from '@/stores/user';
 import Loading from '../Loading';
 
 interface AuthGuardProps {
@@ -13,48 +13,46 @@ interface AuthGuardProps {
 
 /**
  * 客户端认证守卫组件
- * 用于保护需要登录才能访问的页面
+ * 使用 useUserStore（自定义 JWT 认证），而非 next-auth
  */
 export function AuthGuard({
                               children,
                               requiredRole = [],
                               fallback = <Loading/>
                           }: AuthGuardProps) {
-    const {data: session, status} = useSession();
+    const {isLoggedIn, userInfo} = useUserStore();
     const router = useRouter();
     const pathname = usePathname();
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const redirectedRef = useRef(false);
 
     useEffect(() => {
-        // 加载中，显示 fallback
-        if (status === 'loading') {
-            return;
-        }
+        if (redirectedRef.current) return;
 
-        // 未登录，重定向到登录页
-        if (status === 'unauthenticated') {
-            router.replace(`/auth/login?callbackUrl=${encodeURIComponent(pathname)}`);
-            return;
-        }
-
-        // 已登录，检查角色权限
-        if (status === 'authenticated' && requiredRole.length > 0) {
-            const userRole = session?.user?.role;
-
+        if (!isLoggedIn) {
+            redirectedRef.current = true;
+            router.replace(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+        } else if (requiredRole.length > 0 && userInfo) {
+            const userRole = userInfo.user_type;
             if (!userRole || !requiredRole.includes(userRole)) {
-                // 无权访问，重定向到首页或错误页
+                redirectedRef.current = true;
                 router.replace('/home');
-                return;
             }
         }
+    }, [isLoggedIn, userInfo, router, pathname, requiredRole]);
 
-        // 验证通过
-        setIsAuthorized(true);
-    }, [status, session, router, pathname, requiredRole]);
-
-    // 加载或未授权时显示 fallback
-    if (status === 'loading' || !isAuthorized) {
+    if (typeof isLoggedIn === 'undefined') {
         return <>{fallback}</>;
+    }
+
+    if (!isLoggedIn) {
+        return <>{fallback}</>;
+    }
+
+    if (requiredRole.length > 0 && userInfo) {
+        const userRole = userInfo.user_type;
+        if (!userRole || !requiredRole.includes(userRole)) {
+            return <>{fallback}</>;
+        }
     }
 
     return <>{children}</>;
@@ -62,7 +60,6 @@ export function AuthGuard({
 
 /**
  * 已登录用户专用守卫
- * 已登录用户访问此组件包裹的内容会被重定向到首页
  */
 interface GuestGuardProps {
     children: React.ReactNode;
@@ -73,18 +70,18 @@ export function GuestGuard({
                                children,
                                fallback = <Loading/>
                            }: GuestGuardProps) {
-    const {data: session, status} = useSession();
+    const {isLoggedIn} = useUserStore();
     const router = useRouter();
+    const redirectedRef = useRef(false);
 
     useEffect(() => {
-        if (status === 'authenticated') {
-            // 已登录，重定向到首页
+        if (isLoggedIn && !redirectedRef.current) {
+            redirectedRef.current = true;
             router.replace('/home');
         }
-    }, [status, router]);
+    }, [isLoggedIn, router]);
 
-    // 已登录时显示 fallback
-    if (status === 'authenticated') {
+    if (isLoggedIn) {
         return <>{fallback}</>;
     }
 
@@ -93,7 +90,6 @@ export function GuestGuard({
 
 /**
  * 角色守卫组件
- * 仅允许指定角色的用户访问
  */
 interface RoleGuardProps {
     children: React.ReactNode;
@@ -108,43 +104,46 @@ export function RoleGuard({
                               fallback = <Loading/>,
                               redirectTo = '/home'
                           }: RoleGuardProps) {
-    const {data: session, status} = useSession();
+    const {isLoggedIn, userInfo} = useUserStore();
     const router = useRouter();
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const redirectedRef = useRef(false);
 
     useEffect(() => {
-        if (status === 'loading') {
+        if (redirectedRef.current) return;
+
+        if (!isLoggedIn) {
+            redirectedRef.current = true;
+            router.replace('/login');
             return;
         }
 
-        if (status === 'unauthenticated') {
-            router.replace(`/auth/login`);
-            return;
-        }
-
-        if (status === 'authenticated') {
-            const userRole = session?.user?.role;
-
+        if (userInfo) {
+            const userRole = userInfo.user_type;
             if (!userRole || !allowedRoles.includes(userRole)) {
-                // 无权访问，重定向
+                redirectedRef.current = true;
                 router.replace(redirectTo);
-                return;
             }
-
-            setIsAuthorized(true);
         }
-    }, [status, session, router, allowedRoles, redirectTo]);
+    }, [isLoggedIn, userInfo, router, allowedRoles, redirectTo]);
 
-    if (status === 'loading' || !isAuthorized) {
+    if (typeof isLoggedIn === 'undefined') {
         return <>{fallback}</>;
+    }
+
+    if (!isLoggedIn) {
+        return <>{fallback}</>;
+    }
+
+    if (userInfo) {
+        const userRole = userInfo.user_type;
+        if (!userRole || !allowedRoles.includes(userRole)) {
+            return <>{fallback}</>;
+        }
     }
 
     return <>{children}</>;
 }
 
-/**
- * POS 收银员专用守卫
- */
 interface PosGuardProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
@@ -161,9 +160,6 @@ export function PosGuard({children, fallback = <Loading/>}: PosGuardProps) {
     );
 }
 
-/**
- * 管理员专用守卫
- */
 interface AdminGuardProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;

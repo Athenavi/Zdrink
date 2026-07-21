@@ -40,7 +40,6 @@ class LoginView(APIView):
     authentication_classes = []  # 禁用认证，包括 CSRF
 
     def post(self, request):
-        print(f"[DEBUG] LoginView - Request data: {request.data}")
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
@@ -52,9 +51,7 @@ class LoginView(APIView):
                 'access': str(refresh.access_token),
                 'message': '登录成功'
             }
-            print(f"[DEBUG] LoginView - Login successful for user: {user.username}")
             return Response(response_data, status=status.HTTP_200_OK)
-        print(f"[DEBUG] LoginView - Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

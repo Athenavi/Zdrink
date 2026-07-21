@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {useEffect, useMemo, useState} from 'react';
 import {useRouter} from 'next/navigation';
@@ -25,7 +25,7 @@ export default function CartPage() {
     useEffect(() => {
         if (!userStore.isLoggedIn) {
             // 未登录，重定向到登录页
-            router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/cart')}`);
+            router.replace(`/login?callbackUrl=${encodeURIComponent('/cart')}`);
             return;
         }
     }, [userStore.isLoggedIn]);

@@ -13,7 +13,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 # 修复：添加ROOT_URLCONF配置
 ROOT_URLCONF = 'zdrink_core.urls'
@@ -102,6 +102,7 @@ SHARED_APPS = [
     'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'simpleui',  # 必须在 admin 之前
     'django.contrib.admin',
     'django.contrib.staticfiles',
 
@@ -281,3 +282,21 @@ SOCIAL_AUTH_ALIPAY_KEY = config('ALIPAY_APP_ID', default='')
 SOCIAL_AUTH_ALIPAY_SECRET = config('ALIPAY_PRIVATE_KEY', default='')
 SOCIAL_AUTH_ALIPAY_PUBLIC_KEY = config('ALIPAY_PUBLIC_KEY', default='')
 SOCIAL_AUTH_ALIPAY_SCOPE = 'auth_user'  # auth_base(静默) 或 auth_user(弹窗)
+
+# ==================== SimpleUI 后台主题配置 ====================
+SIMPLEUI_LOGO = None  # 使用默认logo
+SIMPLEUI_HOME_INFO = False  # 关闭首页广告
+SIMPLEUI_ANALYSIS = False  # 关闭分析
+SIMPLEUI_DEFAULT_THEME = 'admin.lte.css'  # 默认主题
+SIMPLEUI_STATIC_OFFLINE = True  # 使用离线资源，不使用CDN
+SIMPLEUI_CONFIG = {
+    'system_keep': True,  # 保留系统菜单
+    'menu_display': ['认证和授权', '店铺管理', '商品管理', '订单管理', '支付管理', '打印管理', '促销管理'],
+    'dynamic': True,  # 动态菜单
+}
+
+# ==================== 支付网关配置 ====================
+# 站点基础URL（用于支付回调默认地址）
+SITE_BASE_URL = config('SITE_BASE_URL', default='http://localhost:8000')
+# 支付宝网关（沙箱: https://openapi.alipaydev.com/gateway.do）
+ALIPAY_GATEWAY = config('ALIPAY_GATEWAY', default='https://openapi.alipay.com/gateway.do')

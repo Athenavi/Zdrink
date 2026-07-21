@@ -1,7 +1,8 @@
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, DecimalField, F, Sum, Value
+from django.db.models.functions import Coalesce, NullIf
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, filters
@@ -16,6 +17,8 @@ from .serializers import (
     UpdateOrderStatusSerializer, OrderStatisticsSerializer
 )
 from ..core.permissions import IsShopOwnerOrStaff, HasShopPermission
+from ..payments.models import PaymentTransaction, RefundRequest
+from ..payments.services import PaymentServiceFactory
 from ..products.models import Product, ProductSKU
 
 
@@ -25,8 +28,6 @@ class CartViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        print(f'[DEBUG] CartViewSet.get_queryset - User: {self.request.user}')
-        print(f'[DEBUG] CartViewSet.get_queryset - User is authenticated: {self.request.user.is_authenticated}')
         return Cart.objects.filter(user=self.request.user).prefetch_related('items')
 
     def get_serializer_class(self):
@@ -37,9 +38,6 @@ class CartViewSet(ModelViewSet):
     @action(detail=False, methods=['post'])
     def add_item(self, request):
         """添加商品到购物车"""
-        print(f'[DEBUG] CartViewSet.add_item - User: {request.user}')
-        print(f'[DEBUG] CartViewSet.add_item - User is authenticated: {request.user.is_authenticated}')
-        print(f'[DEBUG] CartViewSet.add_item - Request data: {request.data}')
         
         serializer = AddToCartSerializer(data=request.data)
         if serializer.is_valid():
@@ -122,17 +120,13 @@ class CartItemViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        print(f'[DEBUG] CartItemViewSet.get_queryset - User: {self.request.user}')
         # 只返回当前用户的购物车商品项
         return CartItem.objects.filter(cart__user=self.request.user)
 
     def update(self, request, *args, **kwargs):
-        print(f'[DEBUG] CartItemViewSet.update - User: {request.user}')
-        print(f'[DEBUG] CartItemViewSet.update - Data: {request.data}')
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        print(f'[DEBUG] CartItemViewSet.destroy - User: {self.request.user}')
         return super().destroy(request, *args, **kwargs)
 
 
@@ -150,14 +144,12 @@ class OrderViewSet(ModelViewSet):
 
         # 如果是店铺员工或管理员，可以看到店铺的订单
         if hasattr(self.request, 'tenant') and self.request.tenant:
-            print(f'[DEBUG] get_queryset - Using tenant: {self.request.tenant}')
             queryset = Order.objects.filter(shop=self.request.tenant).select_related(
                 'user'
             ).prefetch_related(
                 'items', 'status_logs', 'order_payments'
             )
         else:
-            print('[DEBUG] get_queryset - No tenant context, showing user orders only')
             queryset = Order.objects.select_related(
                 'user'
             ).prefetch_related(
@@ -201,9 +193,6 @@ class OrderViewSet(ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_orders(self, request):
         """获取当前用户的订单"""
-        print(f'[DEBUG] my_orders - User: {request.user}')
-        print(f'[DEBUG] my_orders - User type: {getattr(request.user, "user_type", None)}')
-        print(f'[DEBUG] my_orders - Request params: {request.query_params}')
 
         try:
             # 直接使用 get_queryset()，因为它已经根据用户类型过滤了
@@ -216,10 +205,8 @@ class OrderViewSet(ModelViewSet):
             # 获取状态过滤参数
             status = request.query_params.get('status', None)
             if status:
-                print(f'[DEBUG] Filtering by status: {status}')
                 orders = orders.filter(status=status)
 
-            print(f'[DEBUG] my_orders - Total orders: {orders.count()}')
 
             # 应用分页
             page = self.paginate_queryset(orders)
@@ -288,14 +275,47 @@ class OrderViewSet(ModelViewSet):
 
         with transaction.atomic():
             old_status = order.status
+
+            # 如果是已支付的订单，触发退款
+            if old_status in ['paid', 'confirmed']:
+                paid_transactions = PaymentTransaction.objects.filter(
+                    order=order,
+                    status='paid'
+                ).select_for_update()
+
+                for payment_tx in paid_transactions:
+                    payment_service = PaymentServiceFactory.get_service(
+                        payment_tx.payment_method
+                    )
+                    refund_result = payment_service.refund(
+                        payment_tx,
+                        payment_tx.amount - payment_tx.refund_amount,
+                        request.data.get('notes', '用户取消订单退款')
+                    )
+
+                    payment_tx.refund_amount = payment_tx.amount
+                    payment_tx.status = 'refunded'
+                    payment_tx.refunded_at = timezone.now()
+                    payment_tx.refund_data = refund_result
+                    payment_tx.save()
+
+                    RefundRequest.objects.create(
+                        transaction=payment_tx,
+                        refund_amount=payment_tx.amount,
+                        reason=request.data.get('notes', '用户取消订单退款'),
+                        status='completed',
+                        handled_by=request.user,
+                        handled_at=timezone.now()
+                    )
+
             order.status = 'cancelled'
             order.save()
 
-            # 恢复库存
+            # 恢复库存（使用 F() 避免并发覆盖）
             for item in order.items.all():
                 if item.sku:
-                    item.sku.stock_quantity += item.quantity
-                    item.sku.save()
+                    item.sku.stock_quantity = F('stock_quantity') + item.quantity
+                    item.sku.save(update_fields=['stock_quantity'])
 
             # 记录状态变更
             OrderStatusLog.objects.create(
@@ -365,7 +385,11 @@ class OrderViewSet(ModelViewSet):
         ).values('date').annotate(
             total_orders=Count('id'),
             total_revenue=Sum('total_amount'),
-            average_order_value=Sum('total_amount') / Count('id')
+            average_order_value=Coalesce(
+                Sum('total_amount') / NullIf(Count('id'), 0),
+                Value(0.00),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
         ).order_by('date')
 
         serializer = OrderStatisticsSerializer(report_data, many=True)

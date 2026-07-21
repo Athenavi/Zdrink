@@ -15,8 +15,10 @@ class User(AbstractUser):
 
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
     phone = models.CharField(max_length=15, blank=True, null=True)
+    birthday = models.DateField(null=True, blank=True, verbose_name='生日')
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     points = models.IntegerField(default=0)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='账户余额')
 
     # 会员相关字段
     MEMBERSHIP_LEVEL_CHOICES = (
