@@ -275,7 +275,7 @@ SOCIAL_AUTH_LOGIN_ERROR_URL = '/auth/error/'
 # 微信登录配置
 SOCIAL_AUTH_WEIXIN_KEY = config('WEIXIN_APP_ID', default='')
 SOCIAL_AUTH_WEIXIN_SECRET = config('WEIXIN_APP_SECRET', default='')
-SOCIAL_AUTH_WEIXIN_SCOPE = 'snsapi_userinfo'  # snsapi_base(静默) 或 snsapi_userinfo(弹窗)
+SOCIAL_AUTH_WEIXIN_SCOPE = 'snsapi_login'  # snsapi_login(PC扫码) 或 snsapi_userinfo(移动网页)
 
 # 支付宝登录配置
 SOCIAL_AUTH_ALIPAY_KEY = config('ALIPAY_APP_ID', default='')

@@ -88,13 +88,21 @@ function LoginContent() {
 
     // 微信登录
     const handleWeixinLogin = () => {
+        if (!process.env.NEXT_PUBLIC_WEIXIN_APP_ID) {
+            setError('微信登录未配置（缺少 NEXT_PUBLIC_WEIXIN_APP_ID）');
+            return;
+        }
         const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/weixin`);
-        const authUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${process.env.NEXT_PUBLIC_WEIXIN_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_userinfo&state=STATE#wechat_redirect`;
+        const authUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${process.env.NEXT_PUBLIC_WEIXIN_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=STATE#wechat_redirect`;
         window.location.href = authUrl;
     };
 
     // 支付宝登录
     const handleAlipayLogin = () => {
+        if (!process.env.NEXT_PUBLIC_ALIPAY_APP_ID) {
+            setError('支付宝登录未配置（缺少 NEXT_PUBLIC_ALIPAY_APP_ID）');
+            return;
+        }
         const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/alipay`);
         const authUrl = `https://openauth.alipay.com/oauth2/publicAppAuthorize.htm?app_id=${process.env.NEXT_PUBLIC_ALIPAY_APP_ID}&scope=auth_user&redirect_uri=${redirectUri}`;
         window.location.href = authUrl;
