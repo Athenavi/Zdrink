@@ -47,6 +47,10 @@ class Printer(models.Model):
     is_online = models.BooleanField(default=False, verbose_name='在线状态')
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
 
+    # 飞鹅云凭证（按打印机独立配置，为空则回退到全局配置）
+    feie_user = models.CharField(max_length=100, blank=True, verbose_name='飞鹅云用户名')
+    feie_ukey = models.CharField(max_length=200, blank=True, verbose_name='飞鹅云UKEY')
+
     # 多租户关联
     shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='printers')
 

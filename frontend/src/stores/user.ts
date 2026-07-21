@@ -40,8 +40,9 @@ export const useUserStore = create<UserState>()(
                     set({token: access, isLoggedIn: true, userInfo: user});
 
                     // 设置 cookie 供 Middleware 和 API 客户端使用
-                    document.cookie = `token=${access}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 天
-                    document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 天
+                    const cookieSecure = window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = `token=${access}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${cookieSecure}`;
+                    document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${cookieSecure}`;
 
                     return response.data;
                 } catch (error: any) {
@@ -92,8 +93,8 @@ export const useUserStore = create<UserState>()(
                 set({userInfo: null, token: null, isLoggedIn: false});
 
                 // 清除 cookie
-                document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+                document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
             },
 
             // 初始化用户信息
@@ -126,7 +127,8 @@ export const useUserStore = create<UserState>()(
             setToken: (token: string) => {
                 set({token, isLoggedIn: true});
                 // 仅使用 cookie 存储
-                document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
+                const cookieSecure = window.location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${cookieSecure}`;
             },
         }),
         {

@@ -55,7 +55,7 @@ class PaymentTransaction(models.Model):
 
     # 交易信息
     transaction_no = models.CharField(max_length=64, unique=True, verbose_name='交易号')
-    out_trade_no = models.CharField(max_length=64, verbose_name='商户订单号')
+    out_trade_no = models.CharField(max_length=64, unique=True, verbose_name='商户订单号')
 
     # 关联订单
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payment_transactions')

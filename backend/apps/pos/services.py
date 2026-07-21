@@ -97,10 +97,22 @@ class POSService:
             return order
 
     def apply_discount(self, order, discount_type, discount_value):
-        """应用折扣"""
+        """应用折扣（含安全校验）"""
+        from decimal import ROUND_HALF_UP
+
         if discount_type == 'percentage':
-            discount_amount = order.subtotal * (discount_value / 100)
+            # 百分比折扣：限制 0~100
+            if discount_value < 0 or discount_value > 100:
+                raise ValueError("百分比折扣必须在 0~100 之间")
+            discount_amount = order.subtotal * (Decimal(str(discount_value)) / Decimal('100'))
+            discount_amount = discount_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         elif discount_type == 'fixed':
+            # 固定金额折扣：限制 0 ~ subtotal
+            discount_value = Decimal(str(discount_value))
+            if discount_value < 0:
+                raise ValueError("折扣金额不能为负")
+            if discount_value > order.subtotal:
+                raise ValueError("折扣金额不能超过订单小计")
             discount_amount = discount_value
         else:
             discount_amount = Decimal('0.00')

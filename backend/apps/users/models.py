@@ -361,7 +361,7 @@ class VerifyCode(models.Model):
 
     def __str__(self):
         target = self.phone or self.email
-        return f'{self.get_purpose_display()}[{target}]: {self.code}'
+        return f'{self.get_purpose_display()}[{target}]'
 
     @property
     def is_expired(self):

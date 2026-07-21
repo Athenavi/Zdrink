@@ -20,6 +20,12 @@ class PrinterViewSet(ModelViewSet):
     serializer_class = PrinterSerializer
     permission_classes = [IsShopOwnerOrStaff]
 
+    def get_permissions(self):
+        """写操作（创建/修改/删除）仅限店主和店长"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsShopOwnerOrStaff()]
+        return super().get_permissions()
+
     def get_queryset(self):
         return Printer.objects.filter(shop=self.request.tenant)
 
@@ -90,6 +96,12 @@ class PrintTemplateViewSet(ModelViewSet):
     """打印模板管理"""
     serializer_class = PrintTemplateSerializer
     permission_classes = [IsShopOwnerOrStaff]
+
+    def get_permissions(self):
+        """写操作仅限店主和店长"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsShopOwnerOrStaff()]
+        return super().get_permissions()
 
     def get_queryset(self):
         return PrintTemplate.objects.filter(shop=self.request.tenant)

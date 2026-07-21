@@ -19,6 +19,15 @@ class PaymentService:
         self.payment_method = payment_method
         self.shop = payment_method.shop
 
+    @staticmethod
+    def _sanitize_payment_data(data: dict) -> dict:
+        """剥离 payment_data 中的敏感字段"""
+        SENSITIVE_KEYS = {'credential', 'credit_card', 'card_no', 'cvv', 'bank_account', 'access_token',
+                          'refresh_token'}
+        if not isinstance(data, dict):
+            return data
+        return {k: v for k, v in data.items() if k.lower() not in SENSITIVE_KEYS}
+
     def create_payment(self, order, request):
         """创建支付"""
         raise NotImplementedError
@@ -288,7 +297,7 @@ class WechatPaymentService(PaymentService):
                 transaction.status = 'paid'
                 transaction.thirdparty_trade_no = transaction_id
                 transaction.paid_at = timezone.now()
-                transaction.payment_data = result
+                transaction.payment_data = self._sanitize_payment_data(result)
                 transaction.save()
 
                 # 更新订单状态（仅当订单仍为 pending 时设置 paid，避免回退已流转的状态）
@@ -305,7 +314,7 @@ class WechatPaymentService(PaymentService):
                 return True
             else:
                 transaction.status = 'failed'
-                transaction.payment_data = result
+                transaction.payment_data = self._sanitize_payment_data(result)
                 transaction.save()
                 return False
 
@@ -536,18 +545,23 @@ class AlipayPaymentService(PaymentService):
             except PaymentTransaction.DoesNotExist:
                 return False
 
+            # 幂等性检查：已支付的交易忽略重复回调
+            if transaction.status == 'paid':
+                return True
+
             # 更新支付状态
             transaction.status = 'paid'
             transaction.thirdparty_trade_no = trade_no
             transaction.paid_at = timezone.now()
-            transaction.payment_data = result
+            transaction.payment_data = self._sanitize_payment_data(result)
             transaction.save()
 
-            # 更新订单状态
+            # 更新订单状态（仅当订单仍为 pending 时设置 paid，避免回退已流转的状态）
             order = transaction.order
+            if order.status == 'pending':
+                order.status = 'paid'
             order.payment_status = True
             order.paid_at = timezone.now()
-            order.status = 'paid'
             order.save()
 
             # 订单支付成功后给予积分奖励

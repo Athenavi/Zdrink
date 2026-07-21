@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.users.api import (
@@ -21,9 +22,13 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # API文档
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('api/schema/', SpectacularAPIView.as_view(permission_classes=[permissions.IsAuthenticated]), name='schema'),
+    path('api/docs/',
+         SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[permissions.IsAuthenticated]),
+         name='swagger-ui'),
+    path('api/redoc/',
+         SpectacularRedocView.as_view(url_name='schema', permission_classes=[permissions.IsAuthenticated]),
+         name='redoc'),
 
     # 认证相关
     path('api/auth/register/', RegisterView.as_view(), name='register'),

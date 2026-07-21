@@ -16,12 +16,13 @@ from .serializers import (
     ProductCreateSerializer, SpecificationSerializer, ProductSKUSerializer, InventoryLogSerializer,
     StockAdjustmentSerializer, BulkStockUpdateSerializer, ProductExportSerializer
 )
+from ..core.permissions import IsShopOwnerOrStaff
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name']
     ordering_fields = ['sort_order', 'name', 'created_at']
@@ -35,7 +36,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()  # 添加这一行
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['sort_order', 'name', 'base_price', 'created_at']
@@ -130,7 +131,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 class SpecificationViewSet(viewsets.ModelViewSet):
     queryset = Specification.objects.all()
     serializer_class = SpecificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'display_name']
     ordering_fields = ['sort_order', 'name']
@@ -145,7 +146,7 @@ class SpecificationViewSet(viewsets.ModelViewSet):
 class ProductSKUViewSet(viewsets.ModelViewSet):
     queryset = ProductSKU.objects.all()
     serializer_class = ProductSKUSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['product', 'is_active']
     search_fields = ['sku_code', 'product__name']
@@ -193,7 +194,7 @@ class ProductSKUViewSet(viewsets.ModelViewSet):
 
 class InventoryLogView(generics.ListAPIView):
     serializer_class = InventoryLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsShopOwnerOrStaff]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['sku', 'action']
     ordering_fields = ['created_at']
@@ -205,7 +206,7 @@ class InventoryLogView(generics.ListAPIView):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsShopOwnerOrStaff])
 def bulk_stock_update(request):
     """批量更新库存"""
     serializer = BulkStockUpdateSerializer(data=request.data)
@@ -256,7 +257,7 @@ def bulk_stock_update(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsShopOwnerOrStaff])
 def low_stock_alert(request):
     """低库存预警"""
     low_stock_skus = ProductSKU.objects.filter(

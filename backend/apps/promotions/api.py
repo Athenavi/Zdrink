@@ -1,4 +1,5 @@
 from django.db.models import F
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -172,6 +173,14 @@ def apply_coupon(request):
         # 计算折扣金额
         coupon_service = CouponService(request.user, request.tenant)
         discount_amount = coupon_service.calculate_discount(coupon, order_amount, order_items)
+
+        # 标记优惠券为已使用，防止重复使用
+        user_coupon.status = 'used'
+        user_coupon.used_at = timezone.now()
+        user_coupon.save(update_fields=['status', 'used_at'])
+
+        # 更新优惠券使用计数
+        Coupon.objects.filter(id=coupon.id).update(used_quantity=F('used_quantity') + 1)
 
         return Response({
             'coupon_id': coupon.id,

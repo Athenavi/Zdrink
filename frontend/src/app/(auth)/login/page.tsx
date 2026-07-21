@@ -51,6 +51,12 @@ function LoginContent() {
 
     const captcha = useCaptcha();
 
+    // 安全校验：只允许内部路径
+    const safeRedirect = (url: string | null): string => {
+        if (!url || !url.startsWith('/') || url.startsWith('//') || url.includes('://')) return '/home';
+        return url;
+    };
+
     // 获取登录模式配置
     useEffect(() => {
         apiClient.get('/auth/login-mode/').then(res => {
@@ -142,7 +148,7 @@ function LoginContent() {
             document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`;
             useUserStore.setState({userInfo: user});
             const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect') || '/home';
-            router.push(callbackUrl);
+            router.push(safeRedirect(callbackUrl));
         } catch (err: any) {
             const msg = err.response?.data?.non_field_errors?.[0]
                 || err.response?.data?.detail
@@ -164,7 +170,7 @@ function LoginContent() {
             await login(formData);
             // 登录成功，跳转到目标页面
             const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect') || '/home';
-            router.push(callbackUrl);
+            router.push(safeRedirect(callbackUrl));
         } catch (err: any) {
             console.error('登录失败:', err);
             console.error('错误响应:', err.response);
@@ -219,7 +225,9 @@ function LoginContent() {
             return;
         }
         const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/weixin`);
-        const authUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${process.env.NEXT_PUBLIC_WEIXIN_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=STATE#wechat_redirect`;
+        const randomState = Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem('oauth_state', randomState);
+        const authUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${process.env.NEXT_PUBLIC_WEIXIN_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=${randomState}#wechat_redirect`;
         window.location.href = authUrl;
     };
 

@@ -34,16 +34,19 @@ export default function AlipayCallbackPage() {
 
                 const {access, refresh, user, is_new} = response.data;
 
-                // 保存token
-                localStorage.setItem('access_token', access);
-                localStorage.setItem('refresh_token', refresh);
+                // 保存token（通过 cookie 存储）
                 setToken(access);
 
                 // 初始化用户信息
                 await initUser();
 
                 // 跳转到首页或之前的页面
-                const callbackUrl = searchParams.get('callbackUrl') || '/home';
+                // 安全校验：只允许内部路径
+                const safeRedirect = (url: string) => {
+                    if (!url || !url.startsWith('/') || url.startsWith('//') || url.includes('://')) return '/home';
+                    return url;
+                };
+                const callbackUrl = safeRedirect(searchParams.get('callbackUrl') || '/home');
                 router.push(callbackUrl);
 
             } catch (err: any) {

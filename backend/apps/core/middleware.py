@@ -13,8 +13,9 @@ class DisableCSRFMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # 对 API 请求禁用 CSRF
-        if request.path.startswith('/api/'):
+        # 仅对支付回调端点禁用 CSRF（这些端点由第三方支付平台直接调用，不支持 CSRF token）
+        CSRF_EXEMPT_PATHS = ['/api/payments/callback/', '/api/orders/callback/']
+        if any(request.path.startswith(path) for path in CSRF_EXEMPT_PATHS):
             setattr(request, '_dont_enforce_csrf_checks', True)
 
         response = self.get_response(request)

@@ -196,8 +196,6 @@ export default function SettingsPage() {
             setWechatForm({
                 app_id: data.app_id || '',
                 mch_id: data.mch_id || '',
-                api_key: data.api_key || '',
-                api_secret: data.api_secret || '',
                 notify_url: data.notify_url || '',
                 refund_url: data.refund_url || '',
             });
@@ -217,7 +215,6 @@ export default function SettingsPage() {
             setAlipayForm({
                 app_id: data.app_id || '',
                 alipay_public_key: data.alipay_public_key || '',
-                app_private_key: data.app_private_key || '',
                 notify_url: data.notify_url || '',
                 return_url: data.return_url || '',
             });

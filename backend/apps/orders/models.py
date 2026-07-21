@@ -1,7 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 User = get_user_model()
@@ -9,7 +9,7 @@ User = get_user_model()
 
 class Cart(models.Model):
     """购物车"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='carts')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='carts')
     session_key = models.CharField(max_length=100, blank=True, null=True)  # 用于未登录用户
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -36,7 +36,7 @@ class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
     sku = models.ForeignKey('products.ProductSKU', on_delete=models.CASCADE, null=True, blank=True)
-    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(999)])
 
     # 商品属性选择
     attribute_options = models.ManyToManyField('products.ProductAttributeOption', blank=True)
@@ -117,7 +117,7 @@ class Order(models.Model):
     table_number = models.CharField(max_length=20, blank=True, verbose_name='桌号')
 
     # 店铺关联
-    shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='orders')
+    shop = models.ForeignKey('shops.Shop', on_delete=models.PROTECT, related_name='orders')
 
     # 时间戳
     created_at = models.DateTimeField(auto_now_add=True)
@@ -151,7 +151,7 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     """订单商品"""
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='items')
     product = models.ForeignKey('products.Product', on_delete=models.PROTECT)
     sku = models.ForeignKey('products.ProductSKU', on_delete=models.PROTECT, null=True, blank=True)
 
@@ -180,7 +180,7 @@ class OrderItem(models.Model):
 
 class OrderStatusLog(models.Model):
     """订单状态日志"""
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_logs')
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='status_logs')
     old_status = models.CharField(max_length=20, choices=Order.ORDER_STATUS_CHOICES)
     new_status = models.CharField(max_length=20, choices=Order.ORDER_STATUS_CHOICES)
     notes = models.TextField(blank=True, verbose_name='备注')
@@ -215,7 +215,7 @@ class OrderPayment(models.Model):
         ('refunded', '已退款'),
     )
 
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_payments')
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='order_payments')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, blank=True, verbose_name='交易ID')

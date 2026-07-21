@@ -30,8 +30,9 @@ class FeieyunPrintService(BasePrintService):
     def __init__(self, printer):
         super().__init__(printer)
         self.api_url = "http://api.feieyun.cn/Api/Open/"
-        self.user = getattr(settings, 'FEIE_USER', '')
-        self.ukey = getattr(settings, 'FEIE_UKEY', '')
+        # 优先使用打印机独立的飞鹅云凭证，无则回退到全局配置
+        self.user = printer.feie_user or getattr(settings, 'FEIE_USER', '')
+        self.ukey = printer.feie_ukey or getattr(settings, 'FEIE_UKEY', '')
 
     def _generate_signature(self, timestamp):
         """生成签名"""
@@ -87,7 +88,15 @@ class FeieyunPrintService(BasePrintService):
         # 替换变量
         content = content.replace('{{order_number}}', order.order_number)
         content = content.replace('{{customer_name}}', order.customer_name)
-        content = content.replace('{{customer_phone}}', order.customer_phone)
+        # 手机号掩码处理（仅显示后4位）
+        phone = order.customer_phone or ''
+        if len(phone) == 11:
+            masked_phone = phone[:3] + '****' + phone[-4:]
+        elif phone:
+            masked_phone = phone[:3] + '****' + phone[-2:]
+        else:
+            masked_phone = ''
+        content = content.replace('{{customer_phone}}', masked_phone)
         content = content.replace('{{total_amount}}', str(order.total_amount))
         content = content.replace('{{created_at}}', order.created_at.strftime('%Y-%m-%d %H:%M'))
 
@@ -109,8 +118,16 @@ class FeieyunPrintService(BasePrintService):
 
         # 客户信息
         content += f"客户: {order.customer_name}<BR>"
-        if order.customer_phone:
-            content += f"电话: {order.customer_phone}<BR>"
+        # 手机号掩码处理（仅显示后4位）
+        phone = order.customer_phone or ''
+        if len(phone) == 11:
+            masked_phone = phone[:3] + '****' + phone[-4:]
+        elif phone:
+            masked_phone = phone[:3] + '****' + phone[-2:]
+        else:
+            masked_phone = ''
+        if masked_phone:
+            content += f"电话: {masked_phone}<BR>"
 
         if order.table_number:
             content += f"桌号: {order.table_number}<BR>"
@@ -237,9 +254,18 @@ class NetworkPrintService(BasePrintService):
     def print_text(self, content, copies=1):
         """网络打印文本"""
         import socket
+        import ipaddress
 
         sock = None
         try:
+            # SSRF 防护：禁止连接内网/回环地址
+            try:
+                addr = ipaddress.ip_address(self.printer.ip_address)
+                if addr.is_private or addr.is_loopback or addr.is_link_local:
+                    return {'success': False, 'message': '禁止连接到内网或回环地址'}
+            except ValueError:
+                return {'success': False, 'message': '无效的 IP 地址'}
+
             # 连接网络打印机
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(10)
@@ -297,12 +323,20 @@ class PrintContentGenerator:
         from string import Template
 
         # 构建模板变量上下文
+        # 手机号掩码处理（仅显示后4位）
+        phone = order.customer_phone or ''
+        if len(phone) == 11:
+            masked_phone = phone[:3] + '****' + phone[-4:]
+        elif phone:
+            masked_phone = phone[:3] + '****' + phone[-2:]
+        else:
+            masked_phone = ''
         context = {
             'shop_name': order.shop.name,
             'order_number': order.order_number,
             'created_at': order.created_at.strftime('%Y-%m-%d %H:%M'),
             'customer_name': order.customer_name or '',
-            'customer_phone': order.customer_phone or '',
+            'customer_phone': masked_phone,
             'table_number': order.table_number or '',
             'subtotal': str(order.subtotal),
             'delivery_fee': str(order.delivery_fee),
@@ -339,8 +373,16 @@ class PrintContentGenerator:
 
         # 客户信息
         lines.append(f"客户: {order.customer_name}")
-        if order.customer_phone:
-            lines.append(f"电话: {order.customer_phone}")
+        # 手机号掩码处理（仅显示后4位）
+        phone = order.customer_phone or ''
+        if len(phone) == 11:
+            masked_phone = phone[:3] + '****' + phone[-4:]
+        elif phone:
+            masked_phone = phone[:3] + '****' + phone[-2:]
+        else:
+            masked_phone = ''
+        if masked_phone:
+            lines.append(f"电话: {masked_phone}")
 
         if order.table_number:
             lines.append(f"桌号: {order.table_number}")

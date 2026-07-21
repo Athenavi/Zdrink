@@ -59,6 +59,8 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
         logout(request)
         return Response({'message': '退出登录成功'}, status=status.HTTP_200_OK)

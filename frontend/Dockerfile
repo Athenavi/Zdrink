@@ -1,5 +1,5 @@
 # multi-stage build for Next.js standalone
-FROM node:18-alpine AS base
+FROM node:22-alpine AS base
 
 # 依赖安装阶段
 FROM base AS deps

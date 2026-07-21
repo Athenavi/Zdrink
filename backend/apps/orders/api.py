@@ -174,8 +174,9 @@ class OrderViewSet(ModelViewSet):
             # 创建订单、查看我的订单、取消订单只需要认证
             return [permissions.IsAuthenticated()]
         elif self.action == 'retrieve':
-            # 查看订单详情：允许认证用户查看（会在 get_queryset 中过滤）
-            return [permissions.IsAuthenticated()]
+            # 客户只能通过 my_orders 查看自己的订单
+            # 管理员/员工通过此端点查看订单详情
+            return [permissions.IsAuthenticated(), IsShopOwnerOrStaff()]
         # 其他操作需要店铺员工权限
         return super().get_permissions()
 
@@ -239,6 +240,20 @@ class OrderViewSet(ModelViewSet):
         if serializer.is_valid():
             old_status = order.status
             new_status = serializer.validated_data['status']
+
+            # 订单状态机校验：已终态或取消/退款后禁止变更
+            INVALID_TRANSITIONS = {
+                'completed': [],
+                'refunded': [],
+                'cancelled': ['pending', 'paid', 'confirmed', 'preparing', 'ready', 'completed', 'refunded'],
+            }
+            if old_status in INVALID_TRANSITIONS:
+                allowed = INVALID_TRANSITIONS[old_status]
+                if new_status not in allowed:
+                    return Response(
+                        {'error': f'订单状态 {old_status} 不允许变更为 {new_status}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
             with transaction.atomic():
                 order.status = new_status
@@ -311,11 +326,12 @@ class OrderViewSet(ModelViewSet):
             order.status = 'cancelled'
             order.save()
 
-            # 恢复库存（使用 F() 避免并发覆盖）
+            # 恢复库存（使用 F() 原子操作避免并发覆盖）
             for item in order.items.all():
                 if item.sku:
-                    item.sku.stock_quantity = F('stock_quantity') + item.quantity
-                    item.sku.save(update_fields=['stock_quantity'])
+                    ProductSKU.objects.filter(id=item.sku.id).update(
+                        stock_quantity=F('stock_quantity') + item.quantity
+                    )
 
             # 记录状态变更
             OrderStatusLog.objects.create(

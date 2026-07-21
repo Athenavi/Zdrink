@@ -56,11 +56,8 @@ def send_code_via_sms(phone: str, code: str) -> bool:
 
 
 def _send_sms_console(phone: str, code: str) -> bool:
-    """开发环境：打印到日志"""
-    logger.info('=' * 50)
-    logger.info(f'【短信验证码】手机号: {phone}')
-    logger.info(f'【短信验证码】验证码: {code}')
-    logger.info('=' * 50)
+    """开发环境：仅记录发送事件，不记录验证码"""
+    logger.info(f'[SMS] 验证码已发送至 {phone[:3]}****{phone[-4:] if len(phone) >= 7 else ""}')
     return True
 
 
@@ -216,21 +213,18 @@ def send_code_via_email(email: str, code: str) -> bool:
 
 
 def _send_email_console(email: str, code: str) -> bool:
-    """开发环境：打印到日志"""
-    logger.info('=' * 50)
-    logger.info(f'【邮件验证码】邮箱: {email}')
-    logger.info(f'【邮件验证码】验证码: {code}')
-    logger.info('=' * 50)
+    """开发环境：仅记录发送事件，不记录验证码"""
+    logger.info(f'[EMAIL] 验证码已发送至 {email[:3]}***{email.split("@")[-1] if "@" in email else ""}')
     return True
 
 
 # ── 验证码生命周期管理 ──
 
 
-def create_and_send_code(phone: str = '', email: str = '', purpose: str = 'login') -> str:
+def create_and_send_code(phone: str = '', email: str = '', purpose: str = 'login') -> None:
     """
     生成并发送验证码
-    返回验证码文本（开发阶段前端可用，生产需关闭）
+    （不返回验证码，防止泄露）
     """
     config = _get_config()
 
@@ -259,7 +253,7 @@ def create_and_send_code(phone: str = '', email: str = '', purpose: str = 'login
     elif email:
         send_code_via_email(email, code)
 
-    return code
+    return
 
 
 def verify_code(phone: str = '', email: str = '', code: str = '', purpose: str = 'login') -> bool:
@@ -285,6 +279,11 @@ def verify_code(phone: str = '', email: str = '', code: str = '', purpose: str =
     # 标记已使用
     record.is_used = True
     record.save(update_fields=['is_used'])
+
+    # 清理过期验证码（最多删100条，防长事务）
+    VerifyCode.objects.filter(
+        expires_at__lt=timezone.now()
+    )[:100].delete()
 
     return True
 

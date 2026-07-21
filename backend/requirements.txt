@@ -1,33 +1,36 @@
-Django
-djangorestframework
-django-cors-headers
-Pillow
-python-decouple
-django-extensions
-celery
-redis
-drf-yasg
-django-filter
-djangorestframework-simplejwt
-django-allauth
-django-rest-auth
-drf-spectacular
-channels
-channels-redis
-django-tenant-schemas
-django-tenants
-psycopg2-binary
-django-guardian
-django-role-permissions
-django-simpleui  # Django后台主题美化
+Django==5.1.6
+djangorestframework==3.15.2
+django-cors-headers==4.6.0
+django-filter==25.1
+django-tenants==3.7.1
+djangorestframework-simplejwt==5.4.0
+django-decouple==2.1
+django-extensions==3.2.3
+django-guardian==2.4.0
+drf-spectacular==0.28.0
+django-simpleui==2025.3.1  # Django后台主题美化
 # 支付SDK
-wechatpayv3
-python-alipay-sdk
-pycryptodome
-qrcode[pil]
+wechatpayv3==1.1.0
+python-alipay-sdk==3.3.0
+python-jose==3.3.0
+cryptography==44.0.0
+pycryptodome==3.21.0
+qrcode==8.0
 # 第三方登录
-social-auth-app-django
+social-auth-app-django==5.4.3
 # 打印相关
-escpos
-reportlab
-django-qr-code
+escpos==1.1.1
+Pillow==11.1.0
+python-decouple==3.8
+psycopg2-binary==2.9.10
+redis==5.2.1
+celery==5.4.0
+requests==2.32.3
+python-dotenv==1.0.1
+gunicorn==23.0.0
+Pygments==2.18.0
+APScheduler==3.10.4
+openpyxl==3.1.5
+coreschema==0.0.4
+inflection==0.5.1
+uritemplate==4.1.1

@@ -80,7 +80,7 @@ export async function middleware(req: NextRequest) {
         const userRole = decodedToken?.role as string;
 
         // POS 和打印管理仅限管理员或收银员
-        const adminRoutes = ['/pos', '/printing'];
+        const adminRoutes = ['/pos', '/printing', '/admin'];
         const isAdminRoute = adminRoutes.some(p => pathname.startsWith(p));
 
         if (isAdminRoute && userRole !== 'admin' && userRole !== 'cashier') {

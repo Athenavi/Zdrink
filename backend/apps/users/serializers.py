@@ -11,11 +11,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password2', 'email', 'phone', 'user_type')
+        fields = ('username', 'password', 'password2', 'email', 'phone')
         extra_kwargs = {
             'email': {'required': True},
             'phone': {'required': False},  # 改为非必填
-            'user_type': {'required': False, 'default': 'customer'}  # 设置默认值
         }
 
     def validate(self, attrs):
@@ -25,6 +24,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password2')
+        validated_data['user_type'] = 'customer'  # 强制设置为客户
         user = User.objects.create_user(**validated_data)
         return user
 

@@ -17,6 +17,9 @@ API 端点：
 - POST /api/users/social/unbind/ - 解绑第三方账号（需登录）
 - GET  /api/users/social/bindings/ - 获取已绑定的第三方账号列表（需登录）
 """
+import secrets
+from urllib.parse import urlparse
+
 import requests
 from django.conf import settings
 from rest_framework import status, permissions
@@ -84,11 +87,18 @@ class WeixinLoginView(APIView):
 
     def get(self, request):
         """获取微信授权URL"""
+        from django.http import HttpResponseBadRequest
         platform = request.query_params.get('platform', 'pc')
         redirect_uri = request.query_params.get('redirect_uri', '')
 
         if not redirect_uri:
             redirect_uri = f"{settings.FRONTEND_URL}/auth/callback/weixin"
+        else:
+            # 白名单校验：只允许 FRONTEND_URL 下的路径
+            parsed_redirect = urlparse(redirect_uri)
+            parsed_allowed = urlparse(settings.FRONTEND_URL)
+            if parsed_redirect.scheme != parsed_allowed.scheme or parsed_redirect.netloc != parsed_allowed.netloc:
+                return HttpResponseBadRequest("非法的重定向地址")
 
         app_id, _, scope = _get_weixin_config()
 
@@ -100,7 +110,7 @@ class WeixinLoginView(APIView):
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
                 f"scope={scope}&"
-                f"state=RANDOM_STATE#wechat_redirect"
+                f"state={secrets.token_urlsafe(16)}#wechat_redirect"
             )
         else:
             auth_url = (
@@ -109,7 +119,7 @@ class WeixinLoginView(APIView):
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
                 f"scope={scope}&"
-                f"state=RANDOM_STATE"
+                f"state={secrets.token_urlsafe(16)}"
             )
 
         return Response({
@@ -126,10 +136,17 @@ class AlipayLoginView(APIView):
 
     def get(self, request):
         """获取支付宝授权URL"""
+        from django.http import HttpResponseBadRequest
         redirect_uri = request.query_params.get('redirect_uri', '')
 
         if not redirect_uri:
             redirect_uri = f"{settings.FRONTEND_URL}/auth/callback/alipay"
+        else:
+            # 白名单校验
+            parsed_redirect = urlparse(redirect_uri)
+            parsed_allowed = urlparse(settings.FRONTEND_URL)
+            if parsed_redirect.scheme != parsed_allowed.scheme or parsed_redirect.netloc != parsed_allowed.netloc:
+                return HttpResponseBadRequest("非法的重定向地址")
 
         app_id, _, _, scope = _get_alipay_config()
 
@@ -243,8 +260,9 @@ class SocialCallbackView(APIView):
             user = social_auth.user
             if not user.is_active:
                 raise Exception("该账号已被停用")
-            # 更新额外数据
-            social_auth.extra_data = userinfo_data
+            # 更新额外数据（剔除敏感 token）
+            safe_data = {k: v for k, v in userinfo_data.items() if k not in ('access_token', 'refresh_token')}
+            social_auth.extra_data = safe_data
             social_auth.save(update_fields=['extra_data'])
         else:
             # 尝试通过unionid查找
@@ -267,13 +285,14 @@ class SocialCallbackView(APIView):
                 user = self._create_user_from_weixin(userinfo_data)
                 is_new = True
 
-            # 创建绑定关系
+            # 创建绑定关系（剔除敏感 token）
+            safe_data = {k: v for k, v in userinfo_data.items() if k not in ('access_token', 'refresh_token')}
             SocialAuth.objects.create(
                 user=user,
                 provider='weixin',
                 openid=openid,
                 unionid=unionid,
-                extra_data=userinfo_data
+                extra_data=safe_data
             )
 
         # 更新用户模型字段
@@ -353,17 +372,19 @@ class SocialCallbackView(APIView):
             user = social_auth.user
             if not user.is_active:
                 raise Exception("该账号已被停用")
-            social_auth.extra_data = token_data
+            safe_data = {k: v for k, v in token_data.items() if k not in ('access_token', 'refresh_token')}
+            social_auth.extra_data = safe_data
             social_auth.save(update_fields=['extra_data'])
         else:
             user = self._create_user_from_alipay(user_id)
             is_new = True
 
+            safe_data = {k: v for k, v in token_data.items() if k not in ('access_token', 'refresh_token')}
             SocialAuth.objects.create(
                 user=user,
                 provider='alipay',
                 openid=user_id,
-                extra_data=token_data
+                extra_data=safe_data
             )
 
         # 更新用户模型

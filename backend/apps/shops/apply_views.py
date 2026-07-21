@@ -9,7 +9,12 @@ from .models import ShopApply
 
 class ShopApplyView(APIView):
     """入驻申请：提交（无需登录）/ 查询（需登录）"""
-    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
     authentication_classes = []  # 默认禁用所有认证，post 无需登录
 
     def post(self, request):

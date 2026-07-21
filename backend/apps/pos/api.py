@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.permissions import IsShopOwnerOrStaff
+from .models import CashierShift
 from .serializers import (
     QuickOrderSerializer, BarcodeScanSerializer, TableStatusSerializer,
     OrderSplitSerializer, OrderMergeSerializer, CashierShiftSerializer
@@ -314,25 +315,17 @@ def pos_statistics(request):
 @permission_classes([IsShopOwnerOrStaff])
 def start_cashier_shift(request):
     """开始收银班次"""
-    serializer = CashierShiftSerializer(data=request.data)
+    serializer = CashierShiftSerializer(data=request.data, context={'request': request})
 
     if serializer.is_valid():
-        # 这里实现班次开始逻辑
-        # 可以记录收银员、开始时间、起始金额等
-
-        shift_data = {
-            'shift_number': serializer.validated_data['shift_number'],
-            'cashier_id': serializer.validated_data['cashier_id'],
-            'start_amount': serializer.validated_data['start_amount'],
-            'start_time': timezone.now(),
-            'status': 'active'
-        }
-
-        # 保存班次信息到数据库或缓存
+        shift = serializer.save(
+            shop=request.tenant,
+            cashier=request.user
+        )
 
         return Response({
             'message': '班次开始成功',
-            'shift_data': shift_data
+            'shift': CashierShiftSerializer(shift).data
         })
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -346,24 +339,30 @@ def end_cashier_shift(request):
     end_amount = request.data.get('end_amount')
     notes = request.data.get('notes', '')
 
-    if not shift_number or not end_amount:
+    if not shift_number or end_amount is None:
         return Response(
             {'error': '班次号和结束金额不能为空'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 这里实现班次结束逻辑
-    # 计算现金差异、生成报表等
+    try:
+        shift = CashierShift.objects.get(
+            shop=request.tenant,
+            shift_number=shift_number,
+            status='active'
+        )
+        shift.end_amount = end_amount
+        shift.end_time = timezone.now()
+        shift.notes = notes
+        shift.status = 'completed'
+        shift.save()
 
-    end_data = {
-        'shift_number': shift_number,
-        'end_amount': end_amount,
-        'end_time': timezone.now(),
-        'notes': notes,
-        'status': 'completed'
-    }
-
-    return Response({
-        'message': '班次结束成功',
-        'end_data': end_data
-    })
+        return Response({
+            'message': '班次结束成功',
+            'shift': CashierShiftSerializer(shift).data
+        })
+    except CashierShift.DoesNotExist:
+        return Response(
+            {'error': '未找到活跃的班次记录'},
+            status=status.HTTP_404_NOT_FOUND
+        )

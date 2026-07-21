@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from django_tenants.admin import TenantAdminMixin
 
@@ -152,7 +153,7 @@ class ShopApplyAdmin(admin.ModelAdmin):
                         username=username,
                         email=apply.contact_email,
                         phone=apply.contact_phone,
-                        password=apply.account_password,
+                        password=make_password(apply.account_password),
                         user_type='shop_owner',
                     )
 
@@ -184,7 +185,8 @@ class ShopApplyAdmin(admin.ModelAdmin):
                 apply.status = 'approved'
                 apply.reviewer = request.user
                 apply.reviewed_at = timezone.now()
-                apply.save()
+                apply.account_password = ''
+                apply.save(update_fields=['status', 'reviewer', 'reviewed_at', 'account_password'])
 
                 count += 1
             except Exception as e:

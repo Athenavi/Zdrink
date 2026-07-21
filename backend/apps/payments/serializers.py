@@ -6,7 +6,7 @@ from .models import PaymentMethod, PaymentTransaction, RefundRequest, WechatPayC
 class PaymentMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentMethod
-        fields = '__all__'
+        exclude = ('config',)
         read_only_fields = ('shop',)
 
 
@@ -88,17 +88,39 @@ class RefundRequestSerializer(serializers.ModelSerializer):
 
 
 class WechatPayConfigSerializer(serializers.ModelSerializer):
+    api_key_configured = serializers.SerializerMethodField()
+
     class Meta:
         model = WechatPayConfig
-        fields = '__all__'
+        fields = ['id', 'shop', 'app_id', 'mch_id', 'api_key_configured', 'api_key', 'cert_path', 'key_path',
+                  'enable_jsapi', 'enable_miniprogram', 'enable_app', 'enable_wap', 'enable_pc',
+                  'notify_url', 'refund_url', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ('shop',)
+        extra_kwargs = {
+            'api_key': {'write_only': True},
+            'cert_path': {'write_only': True},
+            'key_path': {'write_only': True},
+        }
+
+    def get_api_key_configured(self, obj):
+        return bool(obj.api_key)
 
 
 class AlipayConfigSerializer(serializers.ModelSerializer):
+    app_private_key_configured = serializers.SerializerMethodField()
+
     class Meta:
         model = AlipayConfig
-        fields = '__all__'
+        fields = ['id', 'shop', 'app_id', 'app_private_key_configured', 'app_private_key', 'alipay_public_key',
+                  'enable_app', 'enable_wap', 'enable_pc',
+                  'notify_url', 'return_url', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ('shop',)
+        extra_kwargs = {
+            'app_private_key': {'write_only': True},
+        }
+
+    def get_app_private_key_configured(self, obj):
+        return bool(obj.app_private_key)
 
 
 class PaymentCallbackSerializer(serializers.Serializer):

@@ -11,6 +11,7 @@ from .serializers import (
     ShopStaffCreateSerializer,
     ShopSettingsSerializer
 )
+from ..core.permissions import IsShopOwnerOrStaff
 
 
 class ShopListView(generics.ListCreateAPIView):
@@ -188,7 +189,7 @@ def get_current_shop(request):
 
 
 @api_view(['GET', 'POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, IsShopOwnerOrStaff])
 def get_current_staff(request):
     """获取/添加当前店铺的员工"""
     shop = request.tenant

@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from .models import CashierShift
+
 
 class QuickOrderItemSerializer(serializers.Serializer):
     """快速订单商品序列化器"""
@@ -73,10 +75,13 @@ class POSStatisticsSerializer(serializers.Serializer):
     average_order_value = serializers.DecimalField(max_digits=10, decimal_places=2)
     payment_methods = serializers.DictField()
 
-class CashierShiftSerializer(serializers.Serializer):
-    """收银班次序列化器"""
-    shift_number = serializers.CharField()
-    cashier_id = serializers.IntegerField()
-    start_amount = serializers.DecimalField(max_digits=10, decimal_places=2, default=0)
-    end_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
-    notes = serializers.CharField(required=False, allow_blank=True)
+
+class CashierShiftSerializer(serializers.ModelSerializer):
+    cashier_name = serializers.CharField(source='cashier.username', read_only=True)
+
+    class Meta:
+        model = CashierShift
+        fields = ['id', 'shop', 'cashier', 'cashier_name', 'shift_number',
+                  'start_amount', 'end_amount', 'start_time', 'end_time',
+                  'status', 'notes', 'created_at']
+        read_only_fields = ('shop', 'start_time', 'status', 'created_at')

@@ -204,13 +204,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                     # 重新计算金额
                     self._calculate_order_totals(order)
                 except Cart.DoesNotExist:
-                    # 如果没有购物车商品，设置默认值
-                    order.subtotal = Decimal('0.00')
-                    order.delivery_fee = Decimal('0.00')
-                    order.total_amount = Decimal('0.00')
-                    order.discount_amount = Decimal('0.00')
-                    order.save()
-                    return order
+                    raise serializers.ValidationError("购物车不存在或已失效")
 
             # 从直接数据创建订单商品
             if items_data:
@@ -276,10 +270,10 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
     def _create_order_items_from_data(self, order, items_data):
         for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'])
+            product = Product.objects.get(id=item_data['product_id'], shop=order.shop)
             sku = None
             if item_data.get('sku_id'):
-                sku = ProductSKU.objects.get(id=item_data['sku_id'])
+                sku = ProductSKU.objects.get(id=item_data['sku_id'], product__shop=order.shop)
 
             unit_price = sku.price if sku else product.base_price
             total_price = unit_price * item_data['quantity']

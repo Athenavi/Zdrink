@@ -1,6 +1,5 @@
 """验证码登录 API 视图"""
 import logging
-import os
 
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -50,16 +49,9 @@ class SendCodeView(APIView):
         email = serializer.validated_data.get('email', '')
         purpose = serializer.validated_data.get('purpose', 'login')
 
-        code = create_and_send_code(phone=phone, email=email, purpose=purpose)
+        create_and_send_code(phone=phone, email=email, purpose=purpose)
 
-        # 开发环境返回验证码方便调试
-        debug = os.environ.get('DEBUG', 'True') == 'True'
-        response_data = {'message': '验证码已发送'}
-
-        if debug:
-            response_data['debug_code'] = code
-
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({'message': '验证码已发送'}, status=status.HTTP_200_OK)
 
 
 class LoginByCodeView(APIView):
