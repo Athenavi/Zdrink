@@ -300,3 +300,35 @@ class SocialAuth(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_provider_display()} - {self.openid}"
+
+
+class SocialLoginConfig(models.Model):
+    """第三方登录配置（全局配置，仅允许一条记录）"""
+    # 微信登录
+    weixin_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='微信 AppID')
+    weixin_app_secret = models.CharField(max_length=300, blank=True, default='', verbose_name='微信 AppSecret')
+    weixin_scope = models.CharField(max_length=50, default='snsapi_login', verbose_name='微信 Scope')
+
+    # 支付宝登录
+    alipay_app_id = models.CharField(max_length=100, blank=True, default='', verbose_name='支付宝 AppID')
+    alipay_private_key = models.TextField(blank=True, default='', verbose_name='支付宝应用私钥')
+    alipay_public_key = models.TextField(blank=True, default='', verbose_name='支付宝公钥')
+    alipay_scope = models.CharField(max_length=50, default='auth_user', verbose_name='支付宝 Scope')
+
+    # 控制
+    is_active = models.BooleanField(default=True, verbose_name='启用第三方登录')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'social_login_config'
+        verbose_name = '第三方登录配置'
+        verbose_name_plural = '第三方登录配置'
+
+    def __str__(self):
+        return '第三方登录配置（全局）'
+
+    def save(self, *args, **kwargs):
+        """单例模式：只允许存在一条记录"""
+        if not self.pk and SocialLoginConfig.objects.exists():
+            return  # 已有配置，禁止创建第二条
+        super().save(*args, **kwargs)

@@ -54,3 +54,28 @@ class MemberRechargeAdmin(admin.ModelAdmin):
     list_display = ['user', 'recharge_amount', 'gift_amount', 'payment_status', 'created_at']
     list_filter = ['payment_status', 'created_at', 'shop']
     search_fields = ['user__username']
+
+
+from .models import SocialLoginConfig
+
+
+@admin.register(SocialLoginConfig)
+class SocialLoginConfigAdmin(admin.ModelAdmin):
+    list_display = ['weixin_app_id', 'alipay_app_id', 'is_active', 'updated_at']
+    fieldsets = (
+        ('微信登录配置', {
+            'fields': ('weixin_app_id', 'weixin_app_secret', 'weixin_scope'),
+        }),
+        ('支付宝登录配置', {
+            'fields': ('alipay_app_id', 'alipay_private_key', 'alipay_public_key', 'alipay_scope'),
+        }),
+        ('控制', {
+            'fields': ('is_active',),
+        }),
+    )
+
+    # 单例配置，不显示添加按钮
+    def has_add_permission(self, request):
+        if SocialLoginConfig.objects.exists():
+            return False
+        return True

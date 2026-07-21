@@ -24,13 +24,57 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import SocialAuth
+from .models import SocialAuth, SocialLoginConfig
 from .serializers import UserSerializer
 from .social_serializers import (
     SocialAuthCallbackSerializer,
     SocialBindSerializer,
     SocialUnbindSerializer
 )
+
+
+# ---------------------------------------------------------------------------
+# 配置读取辅助函数：优先从数据库 SocialLoginConfig 读取，回退到 settings.py
+# ---------------------------------------------------------------------------
+
+def _get_weixin_config():
+    """获取微信登录配置"""
+    try:
+        obj = SocialLoginConfig.objects.first()
+        if obj and obj.is_active:
+            return (
+                obj.weixin_app_id or settings.SOCIAL_AUTH_WEIXIN_KEY,
+                obj.weixin_app_secret or settings.SOCIAL_AUTH_WEIXIN_SECRET,
+                obj.weixin_scope or settings.SOCIAL_AUTH_WEIXIN_SCOPE,
+            )
+    except Exception:
+        pass
+    return (
+        settings.SOCIAL_AUTH_WEIXIN_KEY,
+        settings.SOCIAL_AUTH_WEIXIN_SECRET,
+        settings.SOCIAL_AUTH_WEIXIN_SCOPE,
+    )
+
+
+def _get_alipay_config():
+    """获取支付宝登录配置"""
+    try:
+        obj = SocialLoginConfig.objects.first()
+        if obj and obj.is_active:
+            return (
+                obj.alipay_app_id or settings.SOCIAL_AUTH_ALIPAY_KEY,
+                obj.alipay_private_key or settings.SOCIAL_AUTH_ALIPAY_SECRET,
+                obj.alipay_public_key or settings.SOCIAL_AUTH_ALIPAY_PUBLIC_KEY,
+                obj.alipay_scope or settings.SOCIAL_AUTH_ALIPAY_SCOPE,
+            )
+    except Exception:
+        pass
+    return (
+        settings.SOCIAL_AUTH_ALIPAY_KEY,
+        settings.SOCIAL_AUTH_ALIPAY_SECRET,
+        settings.SOCIAL_AUTH_ALIPAY_PUBLIC_KEY,
+        settings.SOCIAL_AUTH_ALIPAY_SCOPE,
+    )
 
 
 class WeixinLoginView(APIView):
@@ -46,23 +90,25 @@ class WeixinLoginView(APIView):
         if not redirect_uri:
             redirect_uri = f"{settings.FRONTEND_URL}/auth/callback/weixin"
 
+        app_id, _, scope = _get_weixin_config()
+
         # 构建授权URL
         if platform == 'mobile':
             auth_url = (
                 f"https://open.weixin.qq.com/connect/oauth2/authorize?"
-                f"appid={settings.SOCIAL_AUTH_WEIXIN_KEY}&"
+                f"appid={app_id}&"
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
-                f"scope={settings.SOCIAL_AUTH_WEIXIN_SCOPE}&"
+                f"scope={scope}&"
                 f"state=RANDOM_STATE#wechat_redirect"
             )
         else:
             auth_url = (
                 f"https://open.weixin.qq.com/connect/qrconnect?"
-                f"appid={settings.SOCIAL_AUTH_WEIXIN_KEY}&"
+                f"appid={app_id}&"
                 f"redirect_uri={redirect_uri}&"
                 f"response_type=code&"
-                f"scope={settings.SOCIAL_AUTH_WEIXIN_SCOPE}&"
+                f"scope={scope}&"
                 f"state=RANDOM_STATE"
             )
 
@@ -85,12 +131,14 @@ class AlipayLoginView(APIView):
         if not redirect_uri:
             redirect_uri = f"{settings.FRONTEND_URL}/auth/callback/alipay"
 
+        app_id, _, _, scope = _get_alipay_config()
+
         # 构建授权URL
         from urllib.parse import urlencode
 
         params = {
-            'app_id': settings.SOCIAL_AUTH_ALIPAY_KEY,
-            'scope': settings.SOCIAL_AUTH_ALIPAY_SCOPE,
+            'app_id': app_id,
+            'scope': scope,
             'redirect_uri': redirect_uri,
         }
 
@@ -148,11 +196,13 @@ class SocialCallbackView(APIView):
 
     def _handle_weixin_callback(self, code, platform='pc'):
         """处理微信回调"""
+        app_id, secret, _ = _get_weixin_config()
+
         # 1. 使用code换取access_token和openid
         token_url = 'https://api.weixin.qq.com/sns/oauth2/access_token'
         token_params = {
-            'appid': settings.SOCIAL_AUTH_WEIXIN_KEY,
-            'secret': settings.SOCIAL_AUTH_WEIXIN_SECRET,
+            'appid': app_id,
+            'secret': secret,
             'code': code,
             'grant_type': 'authorization_code'
         }
@@ -238,6 +288,8 @@ class SocialCallbackView(APIView):
 
     def _handle_alipay_callback(self, code):
         """处理支付宝回调"""
+        app_id, private_key, _, _ = _get_alipay_config()
+
         # 1. 使用code换取access_token
         from datetime import datetime
         import base64
@@ -248,7 +300,7 @@ class SocialCallbackView(APIView):
         # 构建请求参数
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         params = {
-            'app_id': settings.SOCIAL_AUTH_ALIPAY_KEY,
+            'app_id': app_id,
             'method': 'alipay.system.oauth.token',
             'charset': 'utf-8',
             'sign_type': 'RSA2',
@@ -262,7 +314,7 @@ class SocialCallbackView(APIView):
         sorted_params = sorted(params.items())
         sign_string = '&'.join([f"{k}={v}" for k, v in sorted_params if v])
 
-        private_key_str = settings.SOCIAL_AUTH_ALIPAY_SECRET
+        private_key_str = private_key
         if '-----BEGIN RSA PRIVATE KEY-----' not in private_key_str:
             private_key_str = '-----BEGIN RSA PRIVATE KEY-----\n' + private_key_str + '\n-----END RSA PRIVATE KEY-----'
 
@@ -406,11 +458,13 @@ class SocialBindView(APIView):
 
     def _bind_weixin(self, user, code):
         """绑定微信"""
+        app_id, secret, _ = _get_weixin_config()
+
         # 获取access_token和openid
         token_url = 'https://api.weixin.qq.com/sns/oauth2/access_token'
         token_params = {
-            'appid': settings.SOCIAL_AUTH_WEIXIN_KEY,
-            'secret': settings.SOCIAL_AUTH_WEIXIN_SECRET,
+            'appid': app_id,
+            'secret': secret,
             'code': code,
             'grant_type': 'authorization_code'
         }
@@ -446,6 +500,8 @@ class SocialBindView(APIView):
 
     def _bind_alipay(self, user, code):
         """绑定支付宝"""
+        app_id, private_key, _, _ = _get_alipay_config()
+
         from datetime import datetime
         import base64
         from Crypto.PublicKey import RSA
@@ -454,7 +510,7 @@ class SocialBindView(APIView):
 
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         params = {
-            'app_id': settings.SOCIAL_AUTH_ALIPAY_KEY,
+            'app_id': app_id,
             'method': 'alipay.system.oauth.token',
             'charset': 'utf-8',
             'sign_type': 'RSA2',
@@ -467,7 +523,7 @@ class SocialBindView(APIView):
         sorted_params = sorted(params.items())
         sign_string = '&'.join([f"{k}={v}" for k, v in sorted_params if v])
 
-        private_key_str = settings.SOCIAL_AUTH_ALIPAY_SECRET
+        private_key_str = private_key
         if '-----BEGIN RSA PRIVATE KEY-----' not in private_key_str:
             private_key_str = '-----BEGIN RSA PRIVATE KEY-----\n' + private_key_str + '\n-----END RSA PRIVATE KEY-----'
 
