@@ -339,6 +339,14 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # X-Frame-Options（Django默认已是 DENY，显式声明）
 X_FRAME_OPTIONS = 'DENY'
 
+# ==================== 字段级加密配置 ====================
+import base64
+import hashlib
+
+FIELD_ENCRYPTION_KEY = base64.urlsafe_b64encode(
+    hashlib.sha256(SECRET_KEY.encode()).digest()
+).decode()
+
 # ==================== 日志配置 ====================
 LOGGING = {
     'version': 1,

@@ -717,7 +717,9 @@ export default function OrdersPage() {
                                             {detailOrder.delivery_address.province}
                                             {detailOrder.delivery_address.city}
                                             {detailOrder.delivery_address.district}
-                                            {detailOrder.delivery_address.detail}
+                                            {detailOrder.delivery_address.detail?.length > 6
+                                                ? detailOrder.delivery_address.detail.slice(0, 3) + '****' + detailOrder.delivery_address.detail.slice(-2)
+                                                : detailOrder.delivery_address.detail}
                                         </p>
                                     </div>
                                 )}

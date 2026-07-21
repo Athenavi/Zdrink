@@ -437,7 +437,7 @@ export default function CustomersPage() {
                                                 {customers.map((c) => (
                                                     <TableRow key={c.id}>
                                                         <TableCell className="font-medium">{c.username}</TableCell>
-                                                        <TableCell>{c.phone || '—'}</TableCell>
+                                                        <TableCell>{c.phone ? c.phone.slice(0, 3) + '****' + c.phone.slice(-4) : '—'}</TableCell>
                                                         <TableCell>
                                                             {c.membership_level ? (
                                                                 <Badge variant="secondary">{c.membership_level}</Badge>

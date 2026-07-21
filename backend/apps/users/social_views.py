@@ -197,13 +197,30 @@ class SocialCallbackView(APIView):
             # 生成JWT Token
             refresh = RefreshToken.for_user(user)
 
-            return Response({
+            response = Response({
                 'user': UserSerializer(user).data,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
                 'is_new': is_new,
                 'message': '新用户注册成功' if is_new else '登录成功'
             })
+            response.set_cookie(
+                'token', str(refresh.access_token),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=7 * 24 * 60 * 60,
+                path='/'
+            )
+            response.set_cookie(
+                'refresh_token', str(refresh),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=30 * 24 * 60 * 60,
+                path='/'
+            )
+            return response
 
         except Exception as e:
             return Response(

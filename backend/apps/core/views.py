@@ -10,12 +10,16 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
+from rest_framework import permissions
+from rest_framework.decorators import api_view, permission_classes
 
 # 获取 regions 目录的绝对路径
 REGIONS_DIR = Path(settings.MEDIA_ROOT) / 'regions'
 
 
 # 缓存5分钟
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 @cache_page(5 * 60)
 @require_GET
 def get_provinces(request):
@@ -34,6 +38,8 @@ def get_provinces(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 @cache_page(5 * 60)
 @require_GET
 def get_cities(request, province_code):
@@ -56,6 +62,8 @@ def get_cities(request, province_code):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 @cache_page(5 * 60)
 @require_GET
 def get_districts(request, city_code):

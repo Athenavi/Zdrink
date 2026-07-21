@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import login, logout
 from django.utils import timezone
@@ -29,12 +30,29 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
-            return Response({
+            response = Response({
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'message': '用户注册成功'
             }, status=status.HTTP_201_CREATED)
+            response.set_cookie(
+                'token', str(refresh.access_token),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=7 * 24 * 60 * 60,
+                path='/'
+            )
+            response.set_cookie(
+                'refresh_token', str(refresh),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=30 * 24 * 60 * 60,
+                path='/'
+            )
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -54,7 +72,24 @@ class LoginView(APIView):
                 'access': str(refresh.access_token),
                 'message': '登录成功'
             }
-            return Response(response_data, status=status.HTTP_200_OK)
+            response = Response(response_data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                'token', str(refresh.access_token),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=7 * 24 * 60 * 60,
+                path='/'
+            )
+            response.set_cookie(
+                'refresh_token', str(refresh),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax',
+                max_age=30 * 24 * 60 * 60,
+                path='/'
+            )
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

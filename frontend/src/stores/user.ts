@@ -39,10 +39,7 @@ export const useUserStore = create<UserState>()(
                     // 仅使用 cookie 存储 token（与 middleware 保持一致）
                     set({token: access, isLoggedIn: true, userInfo: user});
 
-                    // 设置 cookie 供 Middleware 和 API 客户端使用
-                    const cookieSecure = window.location.protocol === 'https:' ? '; Secure' : '';
-                    document.cookie = `token=${access}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${cookieSecure}`;
-                    document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${cookieSecure}`;
+                    // 后端已在 HttpOnly cookie 中设置 token，前端无需再设置
 
                     return response.data;
                 } catch (error: any) {
@@ -126,9 +123,7 @@ export const useUserStore = create<UserState>()(
             // 设置 token
             setToken: (token: string) => {
                 set({token, isLoggedIn: true});
-                // 仅使用 cookie 存储
-                const cookieSecure = window.location.protocol === 'https:' ? '; Secure' : '';
-                document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${cookieSecure}`;
+                // 后端已在 HttpOnly cookie 中设置 token，前端无需再设置
             },
         }),
         {

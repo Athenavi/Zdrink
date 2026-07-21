@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {useUserStore} from '@/stores/user';
 
 interface NavItem {
     label: string;
@@ -49,6 +50,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({onClose}: AdminSidebarProps) {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
+    const userRole = useUserStore((state) => state.userInfo?.user_type);
 
     return (
         <aside
@@ -75,7 +77,7 @@ export function AdminSidebar({onClose}: AdminSidebarProps) {
 
             {/* 导航菜单 */}
             <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-                {navItems.map((item) => {
+                {navItems.filter(item => !item.permissions || item.permissions.includes(userRole)).map((item) => {
                     const isActive = pathname.startsWith(item.href);
                     return (
                         <Link
