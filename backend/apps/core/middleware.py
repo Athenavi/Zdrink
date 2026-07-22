@@ -27,20 +27,37 @@ class DisableCSRFMiddleware:
         return response
 
 
-class DevTenantFallbackMiddleware:
+class TenantFromHeaderOrFallbackMiddleware:
     """
-    开发环境中间件：当通过 localhost 访问时，自动使用第一个可用的 tenant。
-    避免开发时需要修改 hosts 文件或使用 tenant domain 访问 Admin。
-    仅在 DEBUG=True 时生效。
+    租户识别中间件（在 TenantMainMiddleware 之后执行）：
+    1. 优先从 X-Tenant header 识别租户（前端登录后选择的店铺 ID）
+    2. 其次在 DEBUG 模式下 localhost 访问时使用第一个可用租户
+    3. 否则保留 TenantMainMiddleware 的结果不变
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        # 步骤 1：尝试从 X-Tenant header 识别租户
+        tenant_id = request.headers.get('X-Tenant') or request.META.get('HTTP_X_TENANT', '')
+        if tenant_id:
+            try:
+                from django_tenants.utils import schema_context, get_public_schema_name
+                with schema_context(get_public_schema_name()):
+                    from apps.shops.models import Shop
+                    shop = Shop.objects.get(id=tenant_id)
+                    request.tenant = shop
+                    connection.set_tenant(request.tenant)
+                    response = self.get_response(request)
+                    return response
+            except (Shop.DoesNotExist, ValueError, TypeError):
+                pass  # X-Tenant 无效，继续其他方式
+
+        # 步骤 2：开发环境 localhost 回退
         if settings.DEBUG:
             host = request.get_host().split(':')[0]
-            if host in ('localhost', '127.0.0.1'):
+            if host in ('localhost', '127.0.0.1', '::1'):
                 if not hasattr(request, 'tenant') or request.tenant is None:
                     from django_tenants.utils import get_tenant_model
                     tenant = get_tenant_model().objects.first()

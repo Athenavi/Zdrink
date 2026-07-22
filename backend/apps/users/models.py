@@ -331,6 +331,8 @@ class SocialLoginConfig(models.Model):
 
     class Meta:
         db_table = 'social_login_config'
+        verbose_name = '第三方登录配置（微信/支付宝）'
+        verbose_name_plural = '第三方登录配置（微信/支付宝）'
         verbose_name = '第三方登录配置'
         verbose_name_plural = '第三方登录配置'
 
@@ -497,4 +499,96 @@ class CaptchaConfig(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk and CaptchaConfig.objects.exists():
             raise ValidationError('已存在人机验证配置，不能创建多条')
+        super().save(*args, **kwargs)
+
+
+class StorageConfig(models.Model):
+    """云存储配置（全局单例）"""
+    PROVIDER_CHOICES = (
+        ('local', '本地存储（开发）'),
+        ('aliyun_oss', '阿里云 OSS'),
+        ('tencent_cos', '腾讯云 COS'),
+        ('qiniu', '七牛云 Kodo'),
+    )
+
+    provider = models.CharField(
+        max_length=20, choices=PROVIDER_CHOICES, default='local',
+        verbose_name='存储服务商'
+    )
+    is_active = models.BooleanField(default=True, verbose_name='启用云存储')
+
+    # 通用
+    bucket = models.CharField(max_length=200, blank=True, default='', verbose_name='Bucket/空间名称')
+    region = models.CharField(max_length=100, blank=True, default='', verbose_name='地域/区域')
+    base_url = models.CharField(max_length=300, blank=True, default='', verbose_name='访问域名/CDN')
+    path_prefix = models.CharField(max_length=100, blank=True, default='uploads/', verbose_name='文件路径前缀')
+
+    # 阿里云 OSS
+    aliyun_access_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 AccessKey')
+    aliyun_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 SecretKey')
+
+    # 腾讯云 COS
+    tencent_secret_id = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretId')
+    tencent_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='腾讯云 SecretKey')
+
+    # 七牛云
+    qiniu_access_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='七牛 AccessKey')
+    qiniu_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='七牛 SecretKey')
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'storage_config'
+        verbose_name = '云存储配置'
+        verbose_name_plural = '云存储配置'
+
+    def __str__(self):
+        return f'云存储配置（{self.get_provider_display()}）'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and StorageConfig.objects.exists():
+            raise ValidationError('已存在云存储配置，不能创建多条')
+        super().save(*args, **kwargs)
+
+
+class DnsProviderConfig(models.Model):
+    """DNS 域名服务商配置（全局单例）——用于自动化域名解析"""
+    PROVIDER_CHOICES = (
+        ('manual', '手动配置（不自动解析）'),
+        ('dnspod', '腾讯云 DNSPod'),
+        ('aliyun_dns', '阿里云 DNS'),
+    )
+
+    provider = models.CharField(
+        max_length=20, choices=PROVIDER_CHOICES, default='manual',
+        verbose_name='DNS 服务商'
+    )
+    is_active = models.BooleanField(default=False, verbose_name='启用自动域名解析')
+    domain_suffix = models.CharField(
+        max_length=200, blank=True, default='',
+        verbose_name='根域名',
+        help_text='例如 yourdomain.com，分配的域名将为 shop-{id}.yourdomain.com'
+    )
+
+    # 腾讯云 DNSPod
+    dnspod_secret_id = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='DNSPod SecretId')
+    dnspod_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='DNSPod SecretKey')
+
+    # 阿里云 DNS
+    aliyun_access_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 AccessKey')
+    aliyun_secret_key = EncryptedCharField(max_length=200, blank=True, default='', verbose_name='阿里云 SecretKey')
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'dns_provider_config'
+        verbose_name = '域名解析配置（DNSPod/阿里云DNS）'
+        verbose_name_plural = '域名解析配置（DNSPod/阿里云DNS）'
+
+    def __str__(self):
+        return f'域名解析配置（{self.get_provider_display()}）'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and DnsProviderConfig.objects.exists():
+            raise ValidationError('已存在域名解析配置，不能创建多条')
         super().save(*args, **kwargs)

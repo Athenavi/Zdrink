@@ -81,7 +81,7 @@ class SocialLoginConfigAdmin(admin.ModelAdmin):
         return True
 
 
-from .models import VerifyCode, VerifyConfig, CaptchaConfig
+from .models import VerifyCode, VerifyConfig, CaptchaConfig, StorageConfig, DnsProviderConfig
 
 
 @admin.register(VerifyConfig)
@@ -165,3 +165,54 @@ class VerifyCodeAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(StorageConfig)
+class StorageConfigAdmin(admin.ModelAdmin):
+    list_display = ['provider', 'is_active', 'bucket', 'base_url', 'updated_at']
+    fieldsets = (
+        ('基本设置', {
+            'fields': ('provider', 'is_active', 'bucket', 'region', 'base_url', 'path_prefix'),
+        }),
+        ('阿里云 OSS', {
+            'fields': ('aliyun_access_key', 'aliyun_secret_key'),
+            'description': '选择「阿里云 OSS」时需填写以下参数',
+        }),
+        ('腾讯云 COS', {
+            'fields': ('tencent_secret_id', 'tencent_secret_key'),
+            'description': '选择「腾讯云 COS」时需填写以下参数',
+        }),
+        ('七牛云 Kodo', {
+            'fields': ('qiniu_access_key', 'qiniu_secret_key'),
+            'description': '选择「七牛云 Kodo」时需填写以下参数',
+        }),
+    )
+
+    def has_add_permission(self, request):
+        if StorageConfig.objects.exists():
+            return False
+        return True
+
+
+@admin.register(DnsProviderConfig)
+class DnsProviderConfigAdmin(admin.ModelAdmin):
+    list_display = ['provider', 'is_active', 'domain_suffix', 'updated_at']
+    fieldsets = (
+        ('基本设置', {
+            'fields': ('provider', 'is_active', 'domain_suffix'),
+            'description': '配置根域名和DNS服务商后，系统可在分配域名时自动添加解析记录。例如根域名 yourdomain.com，店铺将获得 shop-3.yourdomain.com。',
+        }),
+        ('腾讯云 DNSPod', {
+            'fields': ('dnspod_secret_id', 'dnspod_secret_key'),
+            'description': '选择「腾讯云 DNSPod」时需填写以下参数',
+        }),
+        ('阿里云 DNS', {
+            'fields': ('aliyun_access_key', 'aliyun_secret_key'),
+            'description': '选择「阿里云 DNS」时需填写以下参数',
+        }),
+    )
+
+    def has_add_permission(self, request):
+        if DnsProviderConfig.objects.exists():
+            return False
+        return True

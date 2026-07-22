@@ -55,7 +55,7 @@ INSTALLED_APPS = [
 # 中间件配置
 MIDDLEWARE = [
     'django_tenants.middleware.main.TenantMainMiddleware',
-    'apps.core.middleware.DevTenantFallbackMiddleware',
+    'apps.core.middleware.TenantFromHeaderOrFallbackMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

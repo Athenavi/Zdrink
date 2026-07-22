@@ -19,11 +19,12 @@ class ShopStaffInline(admin.TabularInline):
 
 @admin.register(Shop)
 class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
-    list_display = ('name', 'shop_type', 'is_active', 'latitude', 'longitude', 'created_at')
+    list_display = ('name', 'shop_type', 'is_active', 'domain_display', 'created_at')
     list_filter = ('shop_type', 'is_active', 'created_at')
     search_fields = ('name', 'address', 'phone')
     filter_horizontal = ()
     inlines = [ShopStaffInline]
+    actions = ['assign_domains']
 
     fieldsets = (
         ('基础信息', {
@@ -80,6 +81,63 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
         """控制删除权限 - 只有超级管理员可以删除"""
         return request.user.is_superuser
 
+    # ── 域名管理 ──────────────────────────────────────────
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs
+
+    def domain_display(self, obj):
+        """显示店铺域名状态"""
+        try:
+            from django_tenants.utils import schema_context, get_public_schema_name
+            with schema_context(get_public_schema_name()):
+                domain = Domain.objects.filter(tenant=obj).first()
+        except Exception:
+            return mark_safe('<span style="color:red">—</span>')
+        if not domain:
+            return mark_safe('<span style="color:#999">未配置</span>')
+        return format_html(
+            '<a href="//{}" target="_blank" style="color:#1a73e8">{}</a>',
+            domain.domain, domain.domain
+        )
+
+    domain_display.short_description = '域名'
+
+    @admin.action(description='🌐 一键分配域名')
+    def assign_domains(self, request, queryset):
+        """为选中的店铺自动分配域名"""
+        from django_tenants.utils import schema_context, get_public_schema_name
+
+        count = 0
+        with schema_context(get_public_schema_name()):
+            for shop in queryset:
+                # 跳过已有域名的店铺
+                if shop.domains.exists():
+                    continue
+
+                # 生成域名：shop-{id}.localhost
+                domain_name = f"shop-{shop.id}.localhost"
+                Domain.objects.create(
+                    domain=domain_name,
+                    tenant=shop,
+                    is_primary=True,
+                )
+                count += 1
+
+        if count:
+            self.message_user(
+                request,
+                f'已为 {count} 个店铺分配域名。开发环境请在 hosts 文件中添加对应记录。',
+                level='SUCCESS'
+            )
+        else:
+            self.message_user(
+                request,
+                '所选店铺均已配置域名，无需重复分配。',
+                level='INFO'
+            )
+
 
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
@@ -97,7 +155,19 @@ class TableAdmin(admin.ModelAdmin):
     generate_qr_codes.short_description = "生成二维码"
 
 
-admin.site.register(Domain)
+@admin.register(Domain)
+class DomainAdmin(admin.ModelAdmin):
+    list_display = ['domain', 'tenant', 'is_primary']
+    list_filter = ['is_primary']
+    search_fields = ['domain', 'tenant__name']
+    raw_id_fields = ['tenant']
+    list_select_related = ['tenant']
+    fieldsets = (
+        ('域名信息', {
+            'fields': ('domain', 'tenant', 'is_primary'),
+            'description': '将域名绑定到指定店铺。每个店铺需要一个唯一域名（例如 shop1.localhost），django-tenants 根据请求的 Host header 匹配域名来识别租户。',
+        }),
+    )
 
 
 @admin.register(ShopStaff)
@@ -121,7 +191,7 @@ class ShopApplyAdmin(admin.ModelAdmin):
     search_fields = ['shop_name', 'contact_name', 'contact_phone', 'contact_email']
     readonly_fields = ['contact_name', 'contact_phone', 'contact_email',
                        'shop_name', 'shop_type', 'shop_address', 'shop_description',
-                       'created_at', 'setup_token', 'setup_completed', 'setup_completed_at']
+                       'created_at', 'setup_token', 'setup_completed', 'setup_completed_at', 'shop']
     actions = ['approve_applies', 'reject_applies']
 
     fieldsets = (
@@ -137,7 +207,7 @@ class ShopApplyAdmin(admin.ModelAdmin):
     )
 
     def approve_applies(self, request, queryset):
-        """审核通过：创建店铺、账号、员工记录、设置，并生成一次性设置令牌"""
+        """审核通过：创建店铺、账号、员工、设置、域名，并生成一次性设置令牌"""
         import uuid
         from django_tenants.utils import schema_context, get_public_schema_name
 
@@ -188,6 +258,14 @@ class ShopApplyAdmin(admin.ModelAdmin):
 
                     # 4. 创建店铺设置
                     ShopSettings.objects.create(shop=shop)
+
+                    # 5. 自动分配域名
+                    domain_name = f"shop-{shop.id}.localhost"
+                    Domain.objects.create(
+                        domain=domain_name,
+                        tenant=shop,
+                        is_primary=True,
+                    )
 
                 # 5. 更新申请状态并生成一次性设置令牌
                 apply.status = 'approved'
