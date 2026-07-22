@@ -19,7 +19,7 @@ class ShopStaffInline(admin.TabularInline):
 
 @admin.register(Shop)
 class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
-    list_display = ('name', 'shop_type', 'is_active', 'created_at')
+    list_display = ('name', 'shop_type', 'is_active', 'latitude', 'longitude', 'created_at')
     list_filter = ('shop_type', 'is_active', 'created_at')
     search_fields = ('name', 'address', 'phone')
     filter_horizontal = ()
@@ -37,6 +37,11 @@ class ShopAdmin(TenantAdminMixin, admin.ModelAdmin):
         }),
         ('配送设置', {
             'fields': ('delivery_fee', 'minimum_order_amount', 'delivery_radius')
+        }),
+        ('地理位置', {
+            'fields': ('latitude', 'longitude'),
+            'description': '经纬度坐标，用于计算店铺到用户的实际距离。留空则使用 Haversine 公式计算不可用。',
+            'classes': ('collapse',),
         }),
         ('多租户设置', {
             'fields': ('schema_name',)

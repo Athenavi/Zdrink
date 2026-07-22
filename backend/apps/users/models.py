@@ -1,6 +1,9 @@
+import secrets
+import string
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
@@ -80,17 +83,24 @@ class User(AbstractUser):
 
         # 如果需要更新，再次保存
         if needs_update:
-            # 使用update_fields只更新这两个字段，避免无限循环
-            super().save(update_fields=['membership_number', 'referral_code'])
+            from django.db import IntegrityError
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    # 使用update_fields只更新这两个字段，避免无限循环
+                    super().save(update_fields=['membership_number', 'referral_code'])
+                    break
+                except IntegrityError:
+                    if attempt >= max_retries - 1:
+                        raise
+                    # 推荐码唯一性冲突，重新生成并重试
+                    self.referral_code = self.generate_referral_code()
 
     def generate_membership_number(self):
-        import secrets
         # 使用当前用户的id来生成会员号
         return f"M{self.id:08d}{secrets.randbelow(9000) + 1000}"
 
     def generate_referral_code(self):
-        import secrets
-        import string
         # 使用密码学安全的随机数生成器
         return ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
@@ -330,7 +340,6 @@ class SocialLoginConfig(models.Model):
     def save(self, *args, **kwargs):
         """单例模式：只允许存在一条记录"""
         if not self.pk and SocialLoginConfig.objects.exists():
-            from django.core.exceptions import ValidationError
             raise ValidationError('已存在第三方登录配置，不能创建多条')
         super().save(*args, **kwargs)
 
@@ -432,7 +441,6 @@ class VerifyConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk and VerifyConfig.objects.exists():
-            from django.core.exceptions import ValidationError
             raise ValidationError('已存在验证码配置，不能创建多条')
         super().save(*args, **kwargs)
 
@@ -488,6 +496,5 @@ class CaptchaConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk and CaptchaConfig.objects.exists():
-            from django.core.exceptions import ValidationError
             raise ValidationError('已存在人机验证配置，不能创建多条')
         super().save(*args, **kwargs)

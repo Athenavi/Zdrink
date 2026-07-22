@@ -290,6 +290,9 @@ FEIE_UKEY = config('FEIE_UKEY', default='')
 # 前端URL（用于生成二维码）
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
+# 高德地图 API Key（可选，用于地理编码和驾车距离计算）
+AMAP_API_KEY = config('AMAP_API_KEY', default='')
+
 # ==================== 第三方登录配置 ====================
 # Social Auth 配置
 SOCIAL_AUTH_URL_NAMESPACE = 'social'

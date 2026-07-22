@@ -36,6 +36,10 @@ class Shop(TenantMixin):
     minimum_order_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='最低起送价')
     delivery_radius = models.IntegerField(default=5, verbose_name='配送半径(公里)')
 
+    # 地理位置（经纬度）
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='纬度')
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='经度')
+
     # 图片
     logo = models.ImageField(upload_to='shops/logo/', blank=True, null=True, verbose_name='店铺Logo')
     banner = models.ImageField(upload_to='shops/banner/', blank=True, null=True, verbose_name='店铺横幅')

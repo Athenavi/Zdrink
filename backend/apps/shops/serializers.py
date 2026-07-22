@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import Shop, ShopStaff, ShopSettings
+from ..core.maps import calculate_distance
 
 User = get_user_model()
 
@@ -14,6 +15,7 @@ class ShopSettingsSerializer(serializers.ModelSerializer):
 
 class ShopSerializer(serializers.ModelSerializer):
     settings = ShopSettingsSerializer(read_only=True)
+    distance = serializers.SerializerMethodField()
 
     class Meta:
         model = Shop
@@ -23,11 +25,39 @@ class ShopSerializer(serializers.ModelSerializer):
             'opening_hours', 'is_active',
             'allow_delivery', 'allow_pickup', 'allow_dine_in',
             'delivery_fee', 'minimum_order_amount', 'delivery_radius',
+            'latitude', 'longitude',
             'payment_methods',
             'created_at', 'updated_at',
             'settings',
+            'distance',
         ]
         read_only_fields = ('created_at', 'updated_at', 'schema_name')
+
+    def get_distance(self, obj) -> float | None:
+        """计算用户到店铺的距离（公里）"""
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        try:
+            user_lat = float(request.query_params.get('lat', 0) or 0)
+            user_lng = float(request.query_params.get('lng', 0) or 0)
+        except (ValueError, TypeError):
+            return None
+
+        if not user_lat or not user_lng:
+            return None
+
+        shop_lat = obj.latitude
+        shop_lng = obj.longitude
+
+        if shop_lat is None or shop_lng is None:
+            return None
+
+        return calculate_distance(
+            user_lat, user_lng,
+            float(shop_lat), float(shop_lng),
+        )
 
 
 class ShopCreateSerializer(serializers.ModelSerializer):

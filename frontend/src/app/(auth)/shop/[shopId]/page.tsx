@@ -24,10 +24,15 @@ export default function ShopPage() {
     const shopId = Number(params.shopId);
 
     // 加载店铺信息
-    const loadShopInfo = async () => {
+    const loadShopInfo = async (userLat?: number, userLng?: number) => {
         setLoading(true);
         try {
-            const response = await shopApi.getShop(shopId);
+            const params: { lat?: number; lng?: number } = {};
+            if (userLat && userLng) {
+                params.lat = userLat;
+                params.lng = userLng;
+            }
+            const response = await shopApi.getShop(shopId, params);
             setShopInfo(response.data);
         } catch (error) {
             console.error('加载店铺信息失败:', error);
@@ -48,12 +53,29 @@ export default function ShopPage() {
         }
     };
 
+    // 获取用户位置并加载店铺信息
     useEffect(() => {
-        if (shopId) {
+        if (!shopId) return;
+
+        loadFeaturedProducts();
+
+        // 尝试通过浏览器地理定位获取用户位置
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    loadShopInfo(position.coords.latitude, position.coords.longitude);
+                },
+                () => {
+                    // 定位失败（用户拒绝等），不传经纬度
+                    loadShopInfo();
+                },
+                {timeout: 5000, enableHighAccuracy: false}
+            );
+        } else {
             loadShopInfo();
-            loadFeaturedProducts();
         }
-    }, [shopId]);
+    },
+    }, [shopId])
 
     const goToMenu = () => {
         router.push(`/menu/${shopId}`);
@@ -134,7 +156,7 @@ export default function ShopPage() {
                         </div>
                         <div className="flex flex-col items-center text-sm text-gray-600">
                             <MapPin className="w-5 h-5 text-blue-500 mb-1"/>
-                            <span>{shopInfo.delivery_radius || 5}km</span>
+                            <span>{shopInfo.distance != null ? `${shopInfo.distance}km` : `${shopInfo.delivery_radius || 5}km`}</span>
                         </div>
                         <div className="flex flex-col items-center text-sm text-gray-600">
                             <ShoppingBag className="w-5 h-5 text-blue-500 mb-1"/>

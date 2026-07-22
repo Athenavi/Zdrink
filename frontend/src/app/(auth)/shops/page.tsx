@@ -24,6 +24,24 @@ export default function ShopsPage() {
     const [finished, setFinished] = useState(false);
     const [shops, setShops] = useState<Shop[]>([]);
     const [page, setPage] = useState(1);
+    const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+    // 获取用户位置
+    useEffect(() => {
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserPosition({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                },
+                () => {
+                },
+                {timeout: 5000, enableHighAccuracy: false}
+            );
+        }
+    }, []);
 
     const shopTypes: ShopType[] = [
         {label: '全部', value: ''},
@@ -52,6 +70,12 @@ export default function ShopsPage() {
 
             if (searchKeyword) {
                 params.search = searchKeyword;
+            }
+
+            // 传入用户位置计算距离
+            if (userPosition) {
+                params.lat = userPosition.lat;
+                params.lng = userPosition.lng;
             }
 
             const response = await shopApi.getShops(params);
@@ -193,6 +217,9 @@ export default function ShopsPage() {
                                     <div className="flex items-center gap-1">
                                         <MapPin className="w-3 h-3"/>
                                         <span>{shop.address || '未知地址'}</span>
+                                        {shop.distance != null && (
+                                            <span className="ml-1 text-blue-500">{shop.distance}km</span>
+                                        )}
                                     </div>
                                     {shop.rating && (
                                         <div className="flex items-center gap-1">

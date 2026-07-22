@@ -3,13 +3,13 @@ import {ApiResponse, Shop} from '@/types';
 
 export const shopApi = {
     // 获取店铺列表
-    getShops(params?: { is_active?: boolean; limit?: number; search?: string }) {
+    getShops(params?: { is_active?: boolean; limit?: number; search?: string; lat?: number; lng?: number }) {
         return apiClient.get<ApiResponse<Shop>>('/shops/', {params});
     },
 
     // 获取店铺详情
-    getShop(shopId: number) {
-        return apiClient.get<Shop>(`/shops/${shopId}/`);
+    getShop(shopId: number, params?: { lat?: number; lng?: number }) {
+        return apiClient.get<Shop>(`/shops/${shopId}/`, {params});
     },
 
     // 获取当前用户关联的店铺

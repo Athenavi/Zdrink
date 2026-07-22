@@ -41,6 +41,9 @@ export interface Shop {
     allow_delivery?: boolean;
     allow_pickup?: boolean;
     allow_dine_in?: boolean;
+    latitude?: number;
+    longitude?: number;
+    distance?: number | null;
 }
 
 // 商品相关类型

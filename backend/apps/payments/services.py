@@ -363,7 +363,6 @@ class AlipayPaymentService(PaymentService):
                 from alipay import AliPay
 
                 # 构建默认URL
-                from django.conf import settings
                 default_notify_url = f"{settings.SITE_BASE_URL}/api/payments/callback/alipay/"
                 default_return_url = f"{settings.SITE_BASE_URL}/payment/result/"
 
