@@ -71,7 +71,7 @@ export default function ProductCard({
               <span className="text-xl font-bold text-red-600">
                 {formatPrice(price)}
               </span>
-                            {originalPrice && originalPrice > price && (
+                            {originalPrice && Number(originalPrice) > Number(price) && (
                                 <span className="text-sm text-gray-400 line-through">
                   {formatPrice(originalPrice)}
                 </span>

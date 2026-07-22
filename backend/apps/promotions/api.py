@@ -1,3 +1,4 @@
+from django.db import transaction as db_transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -43,6 +44,9 @@ class UserCouponViewSet(ModelViewSet):
             queryset = queryset.filter(status=status)
 
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['get'])
     def available(self, request):
@@ -107,6 +111,7 @@ class PromotionViewSet(ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
+@db_transaction.atomic
 def apply_coupon(request):
     """应用优惠券"""
     serializer = ApplyCouponSerializer(data=request.data)

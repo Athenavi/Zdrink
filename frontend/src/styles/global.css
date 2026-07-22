@@ -114,13 +114,13 @@ body {
 .price {
     color: var(--color-danger);
     font-weight: bold;
+}
 
-    &.old {
-        color: var(--color-text-light);
-        text-decoration: line-through;
-        font-size: var(--font-size-sm);
-        margin-left: var(--spacing-xs);
-    }
+.price.old {
+    color: var(--color-text-light);
+    text-decoration: line-through;
+    font-size: var(--font-size-sm);
+    margin-left: var(--spacing-xs);
 }
 
 /* 标签样式 */
@@ -130,31 +130,31 @@ body {
     border-radius: var(--radius-sm);
     font-size: var(--font-size-xs);
     line-height: 1;
+}
 
-    &.primary {
-        background: rgba(25, 137, 250, 0.1);
-        color: var(--color-primary);
-    }
+.tag.primary {
+    background: rgba(25, 137, 250, 0.1);
+    color: var(--color-primary);
+}
 
-    &.success {
-        background: rgba(7, 193, 96, 0.1);
-        color: var(--color-success);
-    }
+.tag.success {
+    background: rgba(7, 193, 96, 0.1);
+    color: var(--color-success);
+}
 
-    &.warning {
-        background: rgba(255, 151, 106, 0.1);
-        color: var(--color-warning);
-    }
+.tag.warning {
+    background: rgba(255, 151, 106, 0.1);
+    color: var(--color-warning);
+}
 
-    &.danger {
-        background: rgba(238, 10, 36, 0.1);
-        color: var(--color-danger);
-    }
+.tag.danger {
+    background: rgba(238, 10, 36, 0.1);
+    color: var(--color-danger);
+}
 
-    &.info {
-        background: rgba(149, 151, 153, 0.1);
-        color: var(--color-text-light);
-    }
+.tag.info {
+    background: rgba(149, 151, 153, 0.1);
+    color: var(--color-text-light);
 }
 
 /* 加载状态 */
@@ -164,12 +164,12 @@ body {
     justify-content: center;
     height: 200px;
     flex-direction: column;
+}
 
-    .loading-text {
-        margin-top: 10px;
-        color: var(--color-text-light);
-        font-size: var(--font-size-md);
-    }
+.loading-container .loading-text {
+    margin-top: 10px;
+    color: var(--color-text-light);
+    font-size: var(--font-size-md);
 }
 
 /* 空状态 */
@@ -179,12 +179,12 @@ body {
     justify-content: center;
     height: 300px;
     flex-direction: column;
+}
 
-    .empty-text {
-        margin-top: 10px;
-        color: var(--color-text-light);
-        font-size: var(--font-size-md);
-    }
+.empty-container .empty-text {
+    margin-top: 10px;
+    color: var(--color-text-light);
+    font-size: var(--font-size-md);
 }
 
 /* 按钮禁用状态 */

@@ -62,6 +62,8 @@ class AMapService:
 
         try:
             import requests
+            import logging
+            logger = logging.getLogger(__name__)
 
             origin = f"{origin_lng},{origin_lat}"
             destination = f"{dest_lng},{dest_lat}"
@@ -84,7 +86,9 @@ class AMapService:
                 return round(distance_m / 1000, 2)
 
         except Exception:
-            pass
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("高德地图 API 驾车距离查询失败", exc_info=True)
 
         return None
 
@@ -121,7 +125,9 @@ class AMapService:
                     return (float(lat), float(lng))
 
         except Exception:
-            pass
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("高德地图 API 地理编码失败", exc_info=True)
 
         return None
 

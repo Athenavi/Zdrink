@@ -280,7 +280,7 @@ class WechatPaymentService(PaymentService):
             resource = result.get('resource', {})
             out_trade_no = resource.get('out_trade_no')
             transaction_id = resource.get('transaction_id')
-            total_fee = int(resource.get('amount', {}).get('total', 0)) / 100
+            total_fee = int((resource.get('amount') or {}).get('total', 0)) / 100
             trade_state = resource.get('trade_state')
 
             if not out_trade_no:

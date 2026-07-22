@@ -98,6 +98,8 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderPayment
         fields = '__all__'
+        read_only_fields = ('order', 'payment_method', 'payment_status', 'transaction_id', 'amount', 'payment_data',
+                            'refund_data', 'paid_at')
 
 
 class OrderListSerializer(serializers.ModelSerializer):

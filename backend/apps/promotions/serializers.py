@@ -18,6 +18,7 @@ class UserCouponSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCoupon
         fields = '__all__'
+        read_only_fields = ('user', 'status', 'used_at')
 
     def get_coupon_info(self, obj):
         return CouponSerializer(obj.coupon).data

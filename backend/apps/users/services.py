@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from .models import PointsLog, PointsRule, MembershipLevelConfig
@@ -16,10 +17,13 @@ class PointsService:
     def earn_points(self, points, points_type, reference_id='', notes=''):
         """获得积分"""
         with transaction.atomic():
-            # 更新用户积分
-            self.user.available_points += points
-            self.user.total_points += points
-            self.user.save()
+            # 使用 F() 原子操作更新积分，避免并发丢失更新
+            User = type(self.user)
+            User.objects.filter(id=self.user.id).update(
+                available_points=F('available_points') + points,
+                total_points=F('total_points') + points,
+            )
+            self.user.refresh_from_db()
 
             # 记录积分日志
             PointsLog.objects.create(
@@ -41,10 +45,13 @@ class PointsService:
             raise ValueError("积分不足")
 
         with transaction.atomic():
-            # 更新用户积分
-            self.user.available_points -= points
-            self.user.used_points += points
-            self.user.save()
+            # 使用 F() 原子操作扣减积分，避免并发超扣
+            User = type(self.user)
+            User.objects.filter(id=self.user.id).update(
+                available_points=F('available_points') - points,
+                used_points=F('used_points') + points,
+            )
+            self.user.refresh_from_db()
 
             # 记录积分日志
             PointsLog.objects.create(

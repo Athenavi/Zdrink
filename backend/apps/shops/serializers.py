@@ -116,7 +116,7 @@ class ShopStaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShopStaff
         fields = '__all__'
-        read_only_fields = ('created_at', 'updated_at')
+        read_only_fields = ('role', 'permissions', 'created_at', 'updated_at')
 
     def get_user_info(self, obj):
         return {

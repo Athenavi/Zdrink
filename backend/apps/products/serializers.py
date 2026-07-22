@@ -71,6 +71,7 @@ class ProductSKUSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSKU
         fields = '__all__'
+        read_only_fields = ('cost_price',)
 
     def create(self, validated_data):
         specification_ids = validated_data.pop('specification_ids', [])
