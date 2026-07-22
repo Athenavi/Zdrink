@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # 安装依赖
-RUN npm ci --only=production --prefer-offline
+RUN npm ci --prefer-offline
 
 # 构建阶段
 FROM base AS builder

@@ -234,6 +234,20 @@ class ShopApply(models.Model):
     shop_address = models.TextField(blank=True, verbose_name='店铺地址')
     shop_description = models.TextField(blank=True, verbose_name='店铺描述')
 
+    # 登录凭证（申请时设置加密存储，用于后续验证）
+    account_password = models.CharField(max_length=256, blank=True, verbose_name='登录密码')
+
+    # 一次性设置令牌（审核通过后生成）
+    setup_token = models.UUIDField(null=True, blank=True, unique=True, verbose_name='设置令牌')
+    setup_completed = models.BooleanField(default=False, verbose_name='是否完成设置')
+    setup_completed_at = models.DateTimeField(null=True, blank=True, verbose_name='设置完成时间')
+
+    # 关联店铺（审核通过后绑定）
+    shop = models.ForeignKey(
+        'shops.Shop', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='shop_applies', verbose_name='关联店铺'
+    )
+
     # 状态
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='审核状态')
     review_remark = models.TextField(blank=True, verbose_name='审核备注')

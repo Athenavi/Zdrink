@@ -7,6 +7,8 @@ interface UserState {
     userInfo: User | null;
     token: string | null;
     isLoggedIn: boolean;
+    selectedShop: { id: number; name: string; shop_type: string } | null;
+    availableShops: { id: number; name: string; shop_type: string }[];
 
     // Actions
     login: (credentials: { username: string; password: string }) => Promise<AuthTokens>;
@@ -16,6 +18,8 @@ interface UserState {
     logout: () => void;
     initUser: () => Promise<void>;
     setToken: (token: string) => void;
+    setSelectedShop: (shop: { id: number; name: string; shop_type: string } | null) => void;
+    fetchAvailableShops: () => Promise<void>;
 }
 
 export const useUserStore = create<UserState>()(
@@ -24,6 +28,8 @@ export const useUserStore = create<UserState>()(
             userInfo: null,
             token: null,
             isLoggedIn: false,
+            selectedShop: null,
+            availableShops: [],
 
             // 登录
             login: async (credentials) => {
@@ -122,12 +128,41 @@ export const useUserStore = create<UserState>()(
                 set({token, isLoggedIn: true});
                 // 后端已在 HttpOnly cookie 中设置 token，前端无需再设置
             },
+
+            // 选择当前店铺（同时设置 X-Tenant cookie）
+            setSelectedShop: (shop) => {
+                set({selectedShop: shop});
+                if (shop && typeof window !== 'undefined') {
+                    document.cookie = `x-tenant=${shop.id}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+                }
+            },
+
+            // 获取用户可用的店铺列表
+            fetchAvailableShops: async () => {
+                try {
+                    const {shopApi} = await import('@/lib/api/shop');
+                    const response = await shopApi.getCurrentShops();
+                    const shops = response.data || [];
+                    set({availableShops: shops});
+                    // 如果只有一个店铺，自动选中
+                    if (shops.length === 1) {
+                        get().setSelectedShop(shops[0]);
+                    }
+                } catch (e) {
+                    console.error('获取店铺列表失败:', e);
+                }
+            },
         }),
         {
             name: 'user-storage', // localStorage 中的 key
             // 持久化 token 和登录状态（token 存 localStorage 是标准 SPA 实践，
             // 因为 HttpOnly cookie 无法被 JavaScript 读取来设置 Authorization 头）
-            partialize: (state) => ({token: state.token, isLoggedIn: state.isLoggedIn}),
+            partialize: (state) => ({
+                token: state.token,
+                isLoggedIn: state.isLoggedIn,
+                selectedShop: state.selectedShop,
+                availableShops: state.availableShops,
+            }),
         }
     )
 );

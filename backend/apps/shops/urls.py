@@ -8,11 +8,12 @@ from .api import (
     get_current_shop,
     get_current_staff
 )
-from .apply_views import ShopApplyView
+from .apply_views import ShopApplyView, ShopApplySetupView
 
 urlpatterns = [
     path('', ShopListView.as_view(), name='shop-list'),
     path('apply/', ShopApplyView.as_view(), name='shop-apply'),
+    path('apply/setup/<uuid:token>/', ShopApplySetupView.as_view(), name='shop-apply-setup'),
     path('current/', get_current_shop, name='current-shops'),
     path('current/staff/', get_current_staff, name='current-staff'),
     path('current/settings/', ShopSettingsView.as_view(), name='current-settings'),

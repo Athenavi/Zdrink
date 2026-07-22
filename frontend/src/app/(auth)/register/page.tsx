@@ -173,6 +173,12 @@ export default function RegisterPage() {
                             >
                                 立即申请入驻 →
                             </Link>
+                            <Link
+                                href="/register/merchant/status"
+                                className="text-blue-500 hover:text-blue-600 text-sm ml-3"
+                            >
+                                查看申请进度
+                            </Link>
                         </p>
                     </div>
                 </div>

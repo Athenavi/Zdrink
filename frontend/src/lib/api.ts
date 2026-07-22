@@ -52,7 +52,7 @@ apiClient.interceptors.request.use(
             const tenant = document.cookie
                 .split('; ')
                 .find(row => row.startsWith('x-tenant='))
-                ?.split('=')[1];
+                ?.split('=')[1] || useUserStore.getState().selectedShop?.id?.toString() || '';
 
             if (tenant) {
                 config.headers['X-Tenant'] = tenant;
@@ -79,6 +79,10 @@ apiClient.interceptors.response.use(
             const {status, data} = response;
 
             switch (status) {
+                case 400:
+                    console.error('请求参数错误:', data);
+                    break;
+
                 case 401:
                     // 未授权，清除 token 并跳转到登录页
                     if (typeof window !== 'undefined') {

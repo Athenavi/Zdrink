@@ -24,9 +24,15 @@ function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const login = useUserStore((state) => state.login);
+    const fetchAvailableShops = useUserStore((state) => state.fetchAvailableShops);
+    const availableShops = useUserStore((state) => state.availableShops);
+    const setSelectedShop = useUserStore((state) => state.setSelectedShop);
+    const selectedShop = useUserStore((state) => state.selectedShop);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showShopPicker, setShowShopPicker] = useState(false);
+    const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
 
     // 密码登录
     const [formData, setFormData] = useState({
@@ -147,8 +153,20 @@ function LoginContent() {
             useUserStore.getState().setToken(access);
             document.cookie = `refresh_token=${refresh}; path=/; max-age=${60 * 60 * 24 * 30}`;
             useUserStore.setState({userInfo: user});
+            // 检查用户店铺
+            await fetchAvailableShops();
+            const shops = useUserStore.getState().availableShops;
             const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect') || '/home';
-            router.push(safeRedirect(callbackUrl));
+
+            if (shops.length === 0) {
+                router.push('/register/merchant');
+            } else if (shops.length === 1) {
+                setSelectedShop(shops[0]);
+                router.push(safeRedirect(callbackUrl));
+            } else {
+                setPendingRedirect(safeRedirect(callbackUrl));
+                setShowShopPicker(true);
+            }
         } catch (err: any) {
             const msg = err.response?.data?.non_field_errors?.[0]
                 || err.response?.data?.detail
@@ -168,9 +186,23 @@ function LoginContent() {
         try {
             console.log('尝试登录，用户名:', formData.username);
             await login(formData);
-            // 登录成功，跳转到目标页面
+            // 登录成功，检查用户店铺
+            await fetchAvailableShops();
+            const shops = useUserStore.getState().availableShops;
             const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect') || '/home';
-            router.push(safeRedirect(callbackUrl));
+
+            if (shops.length === 0) {
+                // 没有关联店铺 → 引导入驻
+                router.push('/register/merchant');
+            } else if (shops.length === 1) {
+                // 只有一家店 → 自动选中并跳转
+                setSelectedShop(shops[0]);
+                router.push(safeRedirect(callbackUrl));
+            } else {
+                // 多家店 → 显示选择器
+                setPendingRedirect(safeRedirect(callbackUrl));
+                setShowShopPicker(true);
+            }
         } catch (err: any) {
             console.error('登录失败:', err);
             console.error('错误响应:', err.response);
@@ -522,18 +554,49 @@ function LoginContent() {
                                 忘记密码
                             </a>
                         </div>
-                        <p className="text-xs text-gray-400">
-                            想成为商家？
-                            <Link
-                                href="/register/merchant"
-                                className="text-blue-500 hover:text-blue-600 font-medium ml-1"
-                            >
-                                商家入驻
-                            </Link>
-                        </p>
                     </div>
                 </div>
             </div>
+
+            {/* 店铺选择弹窗（多店铺用户） */}
+            {showShopPicker && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-1">选择店铺</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            您的账号关联了多家店铺，请选择要管理的店铺
+                        </p>
+                        <div className="space-y-2">
+                            {availableShops.map((shop: any) => (
+                                <button
+                                    key={shop.id}
+                                    onClick={() => {
+                                        setSelectedShop(shop);
+                                        setShowShopPicker(false);
+                                        router.push(pendingRedirect || '/admin/settings');
+                                    }}
+                                    className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                                >
+                                    <div className="font-medium text-gray-800">{shop.name}</div>
+                                    <div className="text-sm text-gray-500 mt-0.5">
+                                        {shop.shop_type === 'restaurant' ? '餐厅' :
+                                            shop.shop_type === 'cafe' ? '咖啡厅' :
+                                                shop.shop_type === 'bar' ? '酒吧' :
+                                                    shop.shop_type === 'bakery' ? '烘焙店' : '其他'}
+                                        {shop.address && ` · ${shop.address}`}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => router.push('/home')}
+                            className="w-full mt-3 py-2 text-sm text-gray-500 hover:text-gray-700 text-center"
+                        >
+                            先以顾客身份浏览
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

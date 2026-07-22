@@ -1,4 +1,5 @@
 from django.db import transaction
+from django_tenants.utils import schema_context, get_public_schema_name
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -29,17 +30,18 @@ class ShopListView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # 如果用户未认证，只返回激活的店铺
-        if not user.is_authenticated:
-            return Shop.objects.filter(is_active=True)
+        with schema_context(get_public_schema_name()):
+            # 如果用户未认证，只返回激活的店铺
+            if not user.is_authenticated:
+                return Shop.objects.filter(is_active=True)
 
-        if user.user_type == 'super_admin':
-            return Shop.objects.all()
-        elif user.user_type in ['shop_owner', 'shop_staff']:
-            # 返回用户关联的店铺
-            return Shop.objects.filter(staff__user=user, staff__is_active=True)
-        else:
-            return Shop.objects.filter(is_active=True)
+            if user.user_type == 'super_admin':
+                return Shop.objects.all()
+            elif user.user_type in ['shop_owner', 'shop_staff']:
+                # 返回用户关联的店铺
+                return Shop.objects.filter(staff__user=user, staff__is_active=True)
+            else:
+                return Shop.objects.filter(is_active=True)
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -52,7 +54,8 @@ class ShopListView(generics.ListCreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        shop = serializer.save()
+        with schema_context(get_public_schema_name()):
+            shop = serializer.save()
 
         return Response(
             ShopSerializer(shop).data,
@@ -68,12 +71,13 @@ class ShopDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        if user.user_type == 'super_admin':
-            return Shop.objects.all()
-        elif user.user_type in ['shop_owner', 'shop_staff']:
-            return Shop.objects.filter(staff__user=user, staff__is_active=True)
-        else:
-            return Shop.objects.filter(is_active=True)
+        with schema_context(get_public_schema_name()):
+            if user.user_type == 'super_admin':
+                return Shop.objects.all()
+            elif user.user_type in ['shop_owner', 'shop_staff']:
+                return Shop.objects.filter(staff__user=user, staff__is_active=True)
+            else:
+                return Shop.objects.filter(is_active=True)
 
 
 class ShopStaffListView(generics.ListCreateAPIView):
@@ -88,18 +92,20 @@ class ShopStaffListView(generics.ListCreateAPIView):
         shop_id = self.kwargs.get('shop_id')
         user = self.request.user
 
-        # 检查用户是否有权限管理该店铺的员工
-        if not self.has_shop_permission(user, shop_id):
-            return ShopStaff.objects.none()
+        with schema_context(get_public_schema_name()):
+            # 检查用户是否有权限管理该店铺的员工
+            if not self.has_shop_permission(user, shop_id):
+                return ShopStaff.objects.none()
 
-        return ShopStaff.objects.filter(shop_id=shop_id, is_active=True)
+            return ShopStaff.objects.filter(shop_id=shop_id, is_active=True)
 
     def has_shop_permission(self, user, shop_id):
         if user.user_type == 'super_admin':
             return True
 
         try:
-            staff = ShopStaff.objects.get(user=user, shop_id=shop_id, is_active=True)
+            with schema_context(get_public_schema_name()):
+                staff = ShopStaff.objects.get(user=user, shop_id=shop_id, is_active=True)
             return staff.role in ['owner', 'manager']
         except ShopStaff.DoesNotExist:
             return False
@@ -118,7 +124,8 @@ class ShopStaffListView(generics.ListCreateAPIView):
 
         # 设置店铺ID
         serializer.validated_data['shop_id'] = shop_id
-        shop_staff = serializer.save()
+        with schema_context(get_public_schema_name()):
+            shop_staff = serializer.save()
 
         return Response(
             ShopStaffSerializer(shop_staff).data,
@@ -137,14 +144,16 @@ class ShopSettingsView(generics.RetrieveUpdateAPIView):
         if not self.has_shop_permission(self.request.user, shop_id):
             raise permissions.PermissionDenied("没有权限修改店铺设置")
 
-        return ShopSettings.objects.get(shop_id=shop_id)
+        with schema_context(get_public_schema_name()):
+            return ShopSettings.objects.get(shop_id=shop_id)
 
     def has_shop_permission(self, user, shop_id):
         if user.user_type == 'super_admin':
             return True
 
         try:
-            staff = ShopStaff.objects.get(user=user, shop_id=shop_id, is_active=True)
+            with schema_context(get_public_schema_name()):
+                staff = ShopStaff.objects.get(user=user, shop_id=shop_id, is_active=True)
             return staff.role in ['owner', 'manager']
         except ShopStaff.DoesNotExist:
             return False
@@ -165,9 +174,10 @@ def get_current_shop(request):
         # 验证权限
         if user.user_type != 'super_admin':
             try:
-                staff = ShopStaff.objects.get(
-                    user=user, shop=shop, is_active=True
-                )
+                with schema_context(get_public_schema_name()):
+                    staff = ShopStaff.objects.get(
+                        user=user, shop=shop, is_active=True
+                    )
                 if staff.role not in ('owner', 'manager'):
                     return Response(
                         {'error': '没有权限修改该店铺'},
@@ -185,10 +195,11 @@ def get_current_shop(request):
         return Response(serializer.data)
 
     # GET 逻辑
-    if user.user_type == 'super_admin':
-        shops = Shop.objects.all()
-    else:
-        shops = Shop.objects.filter(staff__user=user, staff__is_active=True)
+    with schema_context(get_public_schema_name()):
+        if user.user_type == 'super_admin':
+            shops = Shop.objects.all()
+        else:
+            shops = Shop.objects.filter(staff__user=user, staff__is_active=True)
 
     serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
@@ -200,11 +211,13 @@ def get_current_staff(request):
     """获取/添加当前店铺的员工"""
     shop = request.tenant
     if request.method == 'GET':
-        staff = ShopStaff.objects.filter(shop=shop, is_active=True)
+        with schema_context(get_public_schema_name()):
+            staff = ShopStaff.objects.filter(shop=shop, is_active=True)
         serializer = ShopStaffSerializer(staff, many=True)
         return Response(serializer.data)
 
     serializer = ShopStaffCreateSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
-    serializer.save(shop=shop)
+    with schema_context(get_public_schema_name()):
+        serializer.save(shop=shop)
     return Response(serializer.data, status=201)

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+from django.utils.html import format_html, mark_safe
 from django_tenants.admin import TenantAdminMixin
 
 from .models import Shop, Domain, ShopStaff, ShopSettings, ShopApply, Table
@@ -116,12 +116,12 @@ class ShopSettingsAdmin(TenantAdminMixin, admin.ModelAdmin):
 
 @admin.register(ShopApply)
 class ShopApplyAdmin(admin.ModelAdmin):
-    list_display = ['shop_name', 'contact_name', 'contact_phone', 'status', 'created_at']
-    list_filter = ['status', 'shop_type', 'created_at']
+    list_display = ['shop_name', 'contact_name', 'contact_phone', 'status', 'setup_status', 'created_at']
+    list_filter = ['status', 'shop_type', 'setup_completed', 'created_at']
     search_fields = ['shop_name', 'contact_name', 'contact_phone', 'contact_email']
     readonly_fields = ['contact_name', 'contact_phone', 'contact_email',
                        'shop_name', 'shop_type', 'shop_address', 'shop_description',
-                       'created_at']
+                       'created_at', 'setup_token', 'setup_completed', 'setup_completed_at']
     actions = ['approve_applies', 'reject_applies']
 
     fieldsets = (
@@ -137,7 +137,8 @@ class ShopApplyAdmin(admin.ModelAdmin):
     )
 
     def approve_applies(self, request, queryset):
-        """审核通过：创建店铺、账号、员工记录、设置"""
+        """审核通过：创建店铺、账号、员工记录、设置，并生成一次性设置令牌"""
+        import uuid
         from django_tenants.utils import schema_context, get_public_schema_name
 
         pending = queryset.filter(status='pending')
@@ -154,13 +155,15 @@ class ShopApplyAdmin(admin.ModelAdmin):
                         username = f"{base_username}_{counter}"
                         counter += 1
 
-                    owner = User.objects.create_user(
+                    owner = User(
                         username=username,
                         email=apply.contact_email,
                         phone=apply.contact_phone,
-                        password=make_password(apply.account_password),
                         user_type='shop_owner',
                     )
+                    # 密码已在申请时由序列化器加密，直接存储避免二次哈希
+                    owner.password = apply.account_password
+                    owner.save()
 
                     # 2. 创建店铺（Tenant）
                     import re
@@ -186,16 +189,26 @@ class ShopApplyAdmin(admin.ModelAdmin):
                     # 4. 创建店铺设置
                     ShopSettings.objects.create(shop=shop)
 
-                # 5. 更新申请状态（ShopApply 在 public schema 中，不需要 schema_context）
+                # 5. 更新申请状态并生成一次性设置令牌
                 apply.status = 'approved'
                 apply.reviewer = request.user
                 apply.reviewed_at = timezone.now()
-                apply.account_password = ''
-                apply.save(update_fields=['status', 'reviewer', 'reviewed_at', 'account_password'])
+                apply.setup_token = uuid.uuid4()
+                apply.shop = shop  # 关联到创建的店铺
+                apply.save(update_fields=['status', 'reviewer', 'reviewed_at', 'setup_token', 'shop'])
+
+                # 构造设置链接
+                from django.conf import settings
+                setup_url = f"{settings.FRONTEND_URL}/register/merchant/setup/{apply.setup_token}/"
+                self.message_user(
+                    request,
+                    f'✅ [{apply.shop_name}] 审核通过，设置链接：{setup_url}',
+                    level='SUCCESS'
+                )
 
                 count += 1
             except Exception as e:
-                self.message_user(request, f'审核 [{apply.shop_name}] 失败: {e}', level='ERROR')
+                self.message_user(request, f'❌ 审核 [{apply.shop_name}] 失败: {e}', level='ERROR')
 
         if count:
             self.message_user(request, f'已通过 {count} 个入驻申请')
@@ -215,6 +228,23 @@ class ShopApplyAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False  # 仅通过前台提交
+
+    def setup_status(self, obj):
+        """显示设置状态，已通过的申请展示设置链接"""
+        if obj.status != 'approved':
+            return mark_safe('<span style="color:#999">—</span>')
+        if obj.setup_completed:
+            return mark_safe('<span style="color:green">✓ 已完成</span>')
+        if obj.setup_token:
+            from django.conf import settings
+            url = f"{settings.FRONTEND_URL}/register/merchant/setup/{obj.setup_token}/"
+            return format_html(
+                '<a href="{}" target="_blank" style="color:#1a73e8">🔗 设置链接</a>',
+                url
+            )
+        return mark_safe('<span style="color:#999">—</span>')
+
+    setup_status.short_description = '设置状态'
 
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.status != 'pending':

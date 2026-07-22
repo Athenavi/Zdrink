@@ -1,6 +1,17 @@
+from django_tenants.utils import schema_context, get_public_schema_name
 from rest_framework import permissions
 
 from apps.shops.models import ShopStaff
+
+
+def _get_staff(user, shop):
+    """在 public schema 中查询 ShopStaff"""
+    with schema_context(get_public_schema_name()):
+        return ShopStaff.objects.get(
+            user=user,
+            shop=shop,
+            is_active=True
+        )
 
 
 class IsShopOwnerOrStaff(permissions.BasePermission):
@@ -23,11 +34,7 @@ class IsShopOwnerOrStaff(permissions.BasePermission):
 
         # 检查用户是否是该店铺的员工
         try:
-            staff = ShopStaff.objects.get(
-                user=request.user,
-                shop=tenant,
-                is_active=True
-            )
+            _get_staff(request.user, tenant)
             return True
         except ShopStaff.DoesNotExist:
             return False
@@ -50,13 +57,8 @@ class IsShopOwner(permissions.BasePermission):
             return False
 
         try:
-            staff = ShopStaff.objects.get(
-                user=request.user,
-                shop=tenant,
-                is_active=True,
-                role='owner'
-            )
-            return True
+            staff = _get_staff(request.user, tenant)
+            return staff.role == 'owner'
         except ShopStaff.DoesNotExist:
             return False
 
@@ -78,13 +80,8 @@ class IsShopManager(permissions.BasePermission):
             return False
 
         try:
-            staff = ShopStaff.objects.get(
-                user=request.user,
-                shop=tenant,
-                is_active=True,
-                role__in=['owner', 'manager']
-            )
-            return True
+            staff = _get_staff(request.user, tenant)
+            return staff.role in ['owner', 'manager']
         except ShopStaff.DoesNotExist:
             return False
 
@@ -112,11 +109,7 @@ class HasShopPermission(permissions.BasePermission):
             return False
 
         try:
-            staff = ShopStaff.objects.get(
-                user=request.user,
-                shop=tenant,
-                is_active=True
-            )
+            staff = _get_staff(request.user, tenant)
 
             # 检查权限
             if staff.role == 'owner':
