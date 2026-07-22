@@ -74,8 +74,7 @@ export default function ShopPage() {
         } else {
             loadShopInfo();
         }
-    },
-    }, [shopId])
+    }, [shopId]);
 
     const goToMenu = () => {
         router.push(`/menu/${shopId}`);
