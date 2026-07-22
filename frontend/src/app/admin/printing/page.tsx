@@ -19,6 +19,7 @@ import {Switch} from '@/components/ui/switch'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from '@/components/ui/select'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
 import {Loader2, PencilIcon, PlusIcon, Trash2Icon} from 'lucide-react'
+import {toast} from 'sonner'
 
 // ---------- 类型定义 ----------
 
@@ -547,7 +548,7 @@ export default function PrintingPage() {
             await apiDelete(`/api/printing/printers/${printer.id}/`)
             await loadPrinters()
         } catch {
-            // 静默失败
+            toast.error('操作失败')
         }
     }
 
@@ -578,7 +579,7 @@ export default function PrintingPage() {
             await apiDelete(`/api/printing/templates/${template.id}/`)
             await loadTemplates()
         } catch {
-            // 静默失败
+            toast.error('操作失败')
         }
     }
 
@@ -587,7 +588,7 @@ export default function PrintingPage() {
             await apiPost(`/api/printing/templates/${template.id}/set_default/`, {})
             await loadTemplates()
         } catch {
-            // 静默失败
+            toast.error('操作失败')
         }
     }
 

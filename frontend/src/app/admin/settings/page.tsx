@@ -20,7 +20,9 @@ import {
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '@/components/ui/table';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import apiClient from '@/lib/api';
-import {Building2, Eye, EyeOff, Loader2, Plus, Save, UserPlus,} from 'lucide-react';
+import {Building2, Eye, EyeOff, ImageUp, Loader2, Plus, Save, UserPlus, X,} from 'lucide-react';
+import Image from 'next/image';
+import {getImageUrl} from '@/utils';
 
 // ── 类型定义 ──
 
@@ -38,6 +40,7 @@ interface ShopInfo {
     address?: string;
     phone?: string;
     logo?: string;
+    banner?: string;
     business_hours?: BusinessHours;
     delivery_fee?: number;
     delivery_radius?: number;
@@ -107,6 +110,10 @@ export default function SettingsPage() {
     const [shopLoading, setShopLoading] = useState(true);
     const [shopSaving, setShopSaving] = useState(false);
     const [shopSaveSuccess, setShopSaveSuccess] = useState(false);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [bannerFile, setBannerFile] = useState<File | null>(null);
+    const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
     // ── 员工管理 ──
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -150,7 +157,8 @@ export default function SettingsPage() {
         setShopLoading(true);
         try {
             const res = await apiClient.get('/shops/current/');
-            const data = res.data;
+            // GET /shops/current/ 返回数组，取第一个元素（当前用户关联的店铺）
+            const data = Array.isArray(res.data) ? res.data[0] : res.data;
             setShopInfo(data);
             setShopForm({
                 name: data.name || '',
@@ -171,6 +179,36 @@ export default function SettingsPage() {
             setShopLoading(false);
         }
     }, []);
+
+    // ── 图片上传处理 ──
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setLogoFile(file);
+            setLogoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setBannerFile(file);
+            setBannerPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const clearLogo = () => {
+        setLogoFile(null);
+        setLogoPreview(null);
+        setShopForm(p => ({...p, logo: ''}));
+    };
+
+    const clearBanner = () => {
+        setBannerFile(null);
+        setBannerPreview(null);
+        setShopForm(p => ({...p, banner: ''}));
+    };
 
     const fetchStaff = useCallback(async () => {
         setStaffLoading(true);
@@ -239,9 +277,35 @@ export default function SettingsPage() {
         setShopSaving(true);
         setShopSaveSuccess(false);
         try {
-            await apiClient.put('/shops/current/', shopForm);
+            const hasFile = logoFile || bannerFile;
+            if (hasFile) {
+                const formData = new FormData();
+                // 文本字段
+                Object.entries(shopForm).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        if (key === 'business_hours') {
+                            formData.append(key, JSON.stringify(value));
+                        } else {
+                            formData.append(key, String(value));
+                        }
+                    }
+                });
+                // 文件字段
+                if (logoFile) formData.append('logo', logoFile);
+                if (bannerFile) formData.append('banner', bannerFile);
+                await apiClient.put('/shops/current/', formData, {
+                    headers: {'Content-Type': 'multipart/form-data'},
+                });
+            } else {
+                await apiClient.put('/shops/current/', shopForm);
+            }
             setShopSaveSuccess(true);
             showToast('店铺信息已保存');
+            // 重置文件状态
+            setLogoFile(null);
+            setLogoPreview(null);
+            setBannerFile(null);
+            setBannerPreview(null);
             fetchShopInfo();
         } catch {
             showToast('保存店铺信息失败', 'error');
@@ -358,7 +422,111 @@ export default function SettingsPage() {
                                     <Loader2 className="size-5 animate-spin text-muted-foreground"/>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                <>
+                                    {/* ── 店铺图片（Logo & 横幅） ── */}
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mb-6">
+                                        {/* Logo */}
+                                        <div className="space-y-2">
+                                            <Label>店铺头像</Label>
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 relative border">
+                                                    {(logoPreview || shopInfo?.logo) && (
+                                                        <Image
+                                                            src={logoPreview || getImageUrl(shopInfo?.logo || '')}
+                                                            alt="Logo"
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    )}
+                                                    {!logoPreview && !shopInfo?.logo && (
+                                                        <div
+                                                            className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                            无
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <Label
+                                                        htmlFor="logo-upload"
+                                                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <ImageUp size={14}/>
+                                                        选择图片
+                                                    </Label>
+                                                    <input
+                                                        id="logo-upload"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={handleLogoChange}
+                                                    />
+                                                    {(logoPreview || shopInfo?.logo) && (
+                                                        <button
+                                                            onClick={clearLogo}
+                                                            className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                                                        >
+                                                            <X size={12}/> 清除
+                                                        </button>
+                                                    )}
+                                                    <span
+                                                        className="text-xs text-muted-foreground">建议 200×200px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Banner */}
+                                        <div className="space-y-2">
+                                            <Label>店铺横幅</Label>
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className="w-32 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 relative border">
+                                                    {(bannerPreview || shopInfo?.banner) && (
+                                                        <Image
+                                                            src={bannerPreview || getImageUrl(shopInfo?.banner || '')}
+                                                            alt="Banner"
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    )}
+                                                    {!bannerPreview && !shopInfo?.banner && (
+                                                        <div
+                                                            className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                            无
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <Label
+                                                        htmlFor="banner-upload"
+                                                        className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <ImageUp size={14}/>
+                                                        选择图片
+                                                    </Label>
+                                                    <input
+                                                        id="banner-upload"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={handleBannerChange}
+                                                    />
+                                                    {(bannerPreview || shopInfo?.banner) && (
+                                                        <button
+                                                            onClick={clearBanner}
+                                                            className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                                                        >
+                                                            <X size={12}/> 清除
+                                                        </button>
+                                                    )}
+                                                    <span
+                                                        className="text-xs text-muted-foreground">建议 800×400px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                     {/* 店铺名称 */}
                                     <div className="space-y-1.5">
                                         <Label htmlFor="shop-name">店铺名称</Label>
@@ -460,6 +628,7 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                 </div>
+                                </>
                             )}
                         </CardContent>
                     </Card>

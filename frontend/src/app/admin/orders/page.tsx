@@ -1,6 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {toast} from 'sonner';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Badge} from '@/components/ui/badge';
@@ -159,6 +160,7 @@ export default function OrdersPage() {
             setStats(data);
         } catch (e) {
             console.error('加载统计数据失败:', e);
+            toast.error('操作失败，请重试');
         }
     }, []);
 
@@ -179,6 +181,7 @@ export default function OrdersPage() {
             setTotalCount(data.count || 0);
         } catch (e) {
             console.error('加载订单列表失败:', e);
+            toast.error('操作失败，请重试');
             setOrders([]);
             setTotalCount(0);
         } finally {
@@ -224,6 +227,7 @@ export default function OrdersPage() {
             setDetailOrder(res.data);
         } catch (e) {
             console.error('加载订单详情失败:', e);
+            toast.error('操作失败，请重试');
             setDetailOrder(null);
         } finally {
             setDetailLoading(false);
@@ -245,6 +249,7 @@ export default function OrdersPage() {
                 await loadStats();
             } catch (e) {
                 console.error('确认订单失败:', e);
+                toast.error('操作失败，请重试');
             } finally {
                 setActionLoading(null);
             }
@@ -265,6 +270,7 @@ export default function OrdersPage() {
                 await loadStats();
             } catch (e) {
                 console.error('完成订单失败:', e);
+                toast.error('操作失败，请重试');
             } finally {
                 setActionLoading(null);
             }
@@ -296,6 +302,7 @@ export default function OrdersPage() {
             }
         } catch (e) {
             console.error('取消订单失败:', e);
+            toast.error('操作失败，请重试');
         } finally {
             setActionLoading(null);
         }

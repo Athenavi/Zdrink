@@ -29,6 +29,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {formatPrice} from '@/lib/utils'
 import apiClient from '@/lib/api'
 import {Copy, Edit, ImageIcon, Layers, Package, Plus, Search, Trash2,} from 'lucide-react'
+import {toast} from 'sonner'
 
 // ── 类型 ──
 
@@ -139,7 +140,7 @@ export default function ProductsPage() {
             const list = data?.results ?? data?.data ?? (Array.isArray(data) ? data : [data])
             setCategories(Array.isArray(list) ? list : [])
         } catch {
-            // 静默失败
+            toast.error('获取分类列表失败')
         }
     }, [])
 
@@ -160,6 +161,7 @@ export default function ProductsPage() {
             setProducts(Array.isArray(list) ? list : [])
             setTotalCount(data?.count ?? list?.length ?? 0)
         } catch {
+            toast.error('获取商品列表失败')
             setProducts([])
             setTotalCount(0)
         } finally {
@@ -299,7 +301,7 @@ export default function ProductsPage() {
             setCatFormDesc('')
             await fetchCategories()
         } catch {
-            // 错误已在拦截器中处理
+            toast.error('保存分类失败')
         } finally {
             setCatSaving(false)
         }
@@ -311,7 +313,7 @@ export default function ProductsPage() {
             await apiClient.delete(`/products/categories/${id}/`)
             await fetchCategories()
         } catch {
-            // 错误已在拦截器中处理
+            toast.error('删除分类失败')
         } finally {
             setDeletingCatId(null)
         }
@@ -334,7 +336,7 @@ export default function ProductsPage() {
             })
             await fetchProducts()
         } catch {
-            // 错误已在拦截器中处理
+            toast.error('复制商品失败')
         }
     }
 
@@ -356,7 +358,7 @@ export default function ProductsPage() {
             setStockDialogOpen(false)
             await fetchProducts()
         } catch {
-            // 错误已在拦截器中处理
+            toast.error('调整库存失败')
         }
     }
 

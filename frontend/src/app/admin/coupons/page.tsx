@@ -1,5 +1,6 @@
 'use client'
 
+import {toast} from 'sonner'
 import {useCallback, useEffect, useState} from 'react'
 import {Card, CardContent} from '@/components/ui/card'
 import {Button} from '@/components/ui/button'
@@ -128,6 +129,7 @@ function CouponsTab() {
             setCoupons(Array.isArray(list) ? list : [])
         } catch {
             setCoupons([])
+            toast.error('操作失败')
         } finally {
             setLoading(false)
         }
@@ -193,6 +195,7 @@ function CouponsTab() {
             await fetchCoupons()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         } finally {
             setSaving(false)
         }
@@ -206,6 +209,7 @@ function CouponsTab() {
             await fetchCoupons()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         } finally {
             setDeletingId(null)
         }
@@ -219,6 +223,7 @@ function CouponsTab() {
             await fetchCoupons()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         }
     }
 
@@ -497,6 +502,7 @@ function PromotionsTab() {
             setPromotions(Array.isArray(list) ? list : [])
         } catch {
             setPromotions([])
+            toast.error('操作失败')
         } finally {
             setLoading(false)
         }
@@ -556,6 +562,7 @@ function PromotionsTab() {
             await fetchPromotions()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         } finally {
             setSaving(false)
         }
@@ -569,6 +576,7 @@ function PromotionsTab() {
             await fetchPromotions()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         } finally {
             setDeletingId(null)
         }
@@ -582,6 +590,7 @@ function PromotionsTab() {
             await fetchPromotions()
         } catch {
             // 错误已在拦截器中处理
+            toast.error('操作失败')
         }
     }
 

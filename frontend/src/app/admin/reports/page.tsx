@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
 import {BarChart3, CalendarDays, DollarSign, Loader2, ShoppingCart, TrendingUp, Wallet} from 'lucide-react'
+import {Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,} from 'recharts'
 
 // ---------- 类型定义 ----------
 
@@ -16,7 +17,18 @@ interface DailyReport {
     average_order_value: number
 }
 
-type SalesReportData = DailyReport[]
+interface BreakdownItem {
+    order_type?: string;
+    payment_method?: string;
+    total_orders: number;
+    total_revenue: number;
+}
+
+interface SalesReportResponse {
+    daily: DailyReport[];
+    by_type: BreakdownItem[];
+    by_payment: BreakdownItem[];
+}
 
 // ---------- 默认日期范围 ----------
 
@@ -47,7 +59,9 @@ function formatNumber(value: number | null | undefined): string {
 export default function ReportsPage() {
     const [startDate, setStartDate] = useState(getDefaultStartDate)
     const [endDate, setEndDate] = useState(getDefaultEndDate)
-    const [data, setData] = useState<SalesReportData | null>(null)
+    const [data, setData] = useState<DailyReport[] | null>(null)
+    const [typeBreakdown, setTypeBreakdown] = useState<BreakdownItem[]>([])
+    const [paymentBreakdown, setPaymentBreakdown] = useState<BreakdownItem[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -56,9 +70,11 @@ export default function ReportsPage() {
         setError(null)
         try {
             const api = (await import('@/lib/api')).default
-            const url = `/orders/orders/sales_report/?start_date=${startDate}&end_date=${endDate}`
-            const res = await api.get<SalesReportData>(url)
-            setData(res.data)
+            const url = `/api/orders/orders/sales_report/?start_date=${startDate}&end_date=${endDate}`
+            const res = await api.get<SalesReportResponse>(url)
+            setData(res.data.daily)
+            setTypeBreakdown(res.data.by_type)
+            setPaymentBreakdown(res.data.by_payment)
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : '加载报表数据失败'
             setError(msg)
@@ -174,6 +190,123 @@ export default function ReportsPage() {
                     </Card>
                 ))}
             </div>
+
+            {/* 统计图表 */}
+            {data && data.length > 0 && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* 营收趋势折线图 */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <TrendingUp size={16} className="text-primary"/>
+                                营收趋势
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={240}>
+                                <AreaChart data={data}>
+                                    <defs>
+                                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                                    <XAxis dataKey="date" tick={{fontSize: 12}}
+                                           tickFormatter={(v: string) => v.slice(5)}/>
+                                    <YAxis tick={{fontSize: 12}}
+                                           tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`}/>
+                                    <Tooltip
+                                        formatter={(value: number) => [`¥${Number(value).toLocaleString()}`, '营收']}
+                                        labelFormatter={(label: string) => `日期: ${label}`}
+                                    />
+                                    <Area
+                                        type="monotone" dataKey="total_revenue" stroke="#3b82f6"
+                                        fill="url(#revenueGrad)" strokeWidth={2}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* 订单量柱状图 */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <ShoppingCart size={16} className="text-primary"/>
+                                每日订单数
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={240}>
+                                <BarChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                                    <XAxis dataKey="date" tick={{fontSize: 12}}
+                                           tickFormatter={(v: string) => v.slice(5)}/>
+                                    <YAxis tick={{fontSize: 12}} allowDecimals={false}/>
+                                    <Tooltip
+                                        formatter={(value: number) => [value, '订单数']}
+                                        labelFormatter={(label: string) => `日期: ${label}`}
+                                    />
+                                    <Bar dataKey="total_orders" fill="#22c55e" radius={[4, 4, 0, 0]}/>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* 维度分析 */}
+            {data && data.length > 0 && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <ShoppingCart size={16}/> 按订单类型
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {typeBreakdown.length > 0 ? (
+                                <div className="space-y-2">
+                                    {typeBreakdown.map((item) => (
+                                        <div key={item.order_type}
+                                             className="flex items-center justify-between text-sm py-1.5 border-b last:border-0">
+                                            <span>{item.order_type === 'dine_in' ? '堂食' : item.order_type === 'takeaway' ? '自取' : item.order_type === 'delivery' ? '外卖' : item.order_type}</span>
+                                            <span
+                                                className="text-muted-foreground">{item.total_orders} 单 / ¥{Number(item.total_revenue).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground py-4 text-center">暂无数据</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <DollarSign size={16}/> 按支付方式
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {paymentBreakdown.length > 0 ? (
+                                <div className="space-y-2">
+                                    {paymentBreakdown.map((item) => (
+                                        <div key={item.payment_method}
+                                             className="flex items-center justify-between text-sm py-1.5 border-b last:border-0">
+                                            <span>{item.payment_method || '未指定'}</span>
+                                            <span
+                                                className="text-muted-foreground">{item.total_orders} 单 / ¥{Number(item.total_revenue).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground py-4 text-center">暂无数据</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* 数据表格 */}
             <Card>

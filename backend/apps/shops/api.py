@@ -79,6 +79,10 @@ class ShopDetailView(generics.RetrieveUpdateDestroyAPIView):
             else:
                 return Shop.objects.filter(is_active=True)
 
+    def perform_update(self, serializer):
+        with schema_context(get_public_schema_name()):
+            serializer.save()
+
 
 class ShopStaffListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -191,7 +195,8 @@ def get_current_shop(request):
 
         serializer = ShopSerializer(shop, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with schema_context(get_public_schema_name()):
+            serializer.save()
         return Response(serializer.data)
 
     # GET 逻辑

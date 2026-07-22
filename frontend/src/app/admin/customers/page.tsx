@@ -17,7 +17,8 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {Switch} from '@/components/ui/switch'
 import {Label} from '@/components/ui/label'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
-import {ChevronLeftIcon, ChevronRightIcon, Loader2, PencilIcon, PlusIcon, SearchIcon,} from 'lucide-react'
+import {ChevronLeftIcon, ChevronRightIcon, Eye, Loader2, PencilIcon, PlusIcon, SearchIcon,} from 'lucide-react'
+import {toast} from 'sonner'
 
 // ---------- 类型定义 ----------
 
@@ -130,6 +131,7 @@ function LevelEditDialog({open, onOpenChange, level, onSave}: LevelDialogProps) 
             await onSave(data)
             onOpenChange(false)
         } catch {
+            toast.error('操作失败')
             // 错误由调用方处理
         } finally {
             setSaving(false)
@@ -282,6 +284,10 @@ export default function CustomersPage() {
     const [customerSearch, setCustomerSearch] = useState('')
     const customerPageSize = 15
 
+    // ---- 客户详情弹窗 ----
+    const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null)
+    const [detailOpen, setDetailOpen] = useState(false)
+
     // ---- 会员等级配置状态 ----
     const [levels, setLevels] = useState<MembershipLevel[]>([])
     const [levelsLoading, setLevelsLoading] = useState(true)
@@ -431,6 +437,7 @@ export default function CustomersPage() {
                                                     <TableHead>积分</TableHead>
                                                     <TableHead>消费金额</TableHead>
                                                     <TableHead>注册时间</TableHead>
+                                                    <TableHead className="text-right">操作</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -450,6 +457,15 @@ export default function CustomersPage() {
                                                         <TableCell className="text-muted-foreground text-xs">
                                                             {formatDateTime(c.date_joined)}
                                                         </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="sm" onClick={() => {
+                                                                setDetailCustomer(c);
+                                                                setDetailOpen(true);
+                                                            }}>
+                                                                <Eye size={14} className="mr-1"/>
+                                                                查看
+                                                            </Button>
+                                                        </TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -462,6 +478,38 @@ export default function CustomersPage() {
                                         pageSize={customerPageSize}
                                         onChange={setCustomerPage}
                                     />
+
+                                    {/* 客户详情弹窗 */}
+                                    <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                                        <DialogContent className="w-[95vw] sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>客户详情</DialogTitle>
+                                            </DialogHeader>
+                                            {detailCustomer && (
+                                                <div className="space-y-3 py-2">
+                                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                                        <span className="text-muted-foreground">用户名</span>
+                                                        <span>{detailCustomer.username}</span>
+                                                        <span className="text-muted-foreground">电话</span>
+                                                        <span>{detailCustomer.phone || '—'}</span>
+                                                        <span className="text-muted-foreground">邮箱</span>
+                                                        <span>{detailCustomer.email || '—'}</span>
+                                                        <span className="text-muted-foreground">会员等级</span>
+                                                        <span>{detailCustomer.membership_level || '—'}</span>
+                                                        <span className="text-muted-foreground">积分</span>
+                                                        <span>{detailCustomer.points.toLocaleString()}</span>
+                                                        <span className="text-muted-foreground">累计消费</span>
+                                                        <span>¥{Number(detailCustomer.total_consumption || 0).toFixed(2)}</span>
+                                                        <span className="text-muted-foreground">注册时间</span>
+                                                        <span>{formatDateTime(detailCustomer.date_joined)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setDetailOpen(false)}>关闭</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
                                 </>
                             )}
                         </CardContent>

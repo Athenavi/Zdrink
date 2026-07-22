@@ -6,6 +6,7 @@ import {useUserStore} from '@/stores/user';
 import {AdminSidebar} from '@/components/AdminSidebar';
 import {AdminHeader} from '@/components/AdminHeader';
 import Loading from '@/components/Loading';
+import {Toaster} from '@/components/ui/sonner';
 import {Menu} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 
@@ -83,6 +84,7 @@ export default function AdminLayout({children}: { children: React.ReactNode }) {
                     </div>
                 </main>
             </div>
+            <Toaster/>
         </div>
     );
 }

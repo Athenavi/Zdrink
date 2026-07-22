@@ -238,19 +238,13 @@ class OrderViewSet(ModelViewSet):
             old_status = order.status
             new_status = serializer.validated_data['status']
 
-            # 订单状态机校验：已终态或取消/退款后禁止变更
-            INVALID_TRANSITIONS = {
-                'completed': [],
-                'refunded': [],
-                'cancelled': ['pending', 'paid', 'confirmed', 'preparing', 'ready', 'completed', 'refunded'],
-            }
-            if old_status in INVALID_TRANSITIONS:
-                allowed = INVALID_TRANSITIONS[old_status]
-                if new_status not in allowed:
-                    return Response(
-                        {'error': f'订单状态 {old_status} 不允许变更为 {new_status}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+            # 终态（completed/refunded）和已取消状态禁止任何变更
+            TERMINAL_STATES = {'completed', 'refunded', 'cancelled'}
+            if old_status in TERMINAL_STATES:
+                return Response(
+                    {'error': f'订单状态 {old_status} 不允许变更为 {new_status}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             with transaction.atomic():
                 order.status = new_status
@@ -405,8 +399,24 @@ class OrderViewSet(ModelViewSet):
             )
         ).order_by('date')
 
+        # 按订单类型分组
+        type_breakdown = orders.values('order_type').annotate(
+            total_orders=Count('id'),
+            total_revenue=Sum('total_amount'),
+        ).order_by('order_type')
+
+        # 按支付方式分组
+        payment_breakdown = orders.values('payment_method').annotate(
+            total_orders=Count('id'),
+            total_revenue=Sum('total_amount'),
+        ).order_by('payment_method')
+
         serializer = OrderStatisticsSerializer(report_data, many=True)
-        return Response(serializer.data)
+        return Response({
+            'daily': serializer.data,
+            'by_type': type_breakdown,
+            'by_payment': payment_breakdown,
+        })
 
 
 @api_view(['GET'])

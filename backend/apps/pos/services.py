@@ -310,7 +310,7 @@ class TableManagementService:
 
     def get_table_status(self):
         """获取所有桌台状态"""
-        from .models import Table
+        from apps.shops.models import Table
 
         tables = Table.objects.filter(shop=self.shop, is_active=True)
         table_status = []
@@ -335,7 +335,7 @@ class TableManagementService:
 
     def update_table_status(self, table_id, status, order_id=None):
         """更新桌台状态"""
-        from .models import Table
+        from apps.shops.models import Table
         from apps.orders.models import Order
 
         try:
@@ -355,7 +355,7 @@ class TableManagementService:
 
     def get_available_tables(self, capacity=None):
         """获取可用桌台"""
-        from .models import Table
+        from apps.shops.models import Table
 
         tables = Table.objects.filter(
             shop=self.shop,

@@ -3,6 +3,7 @@
 import {useEffect, useState} from 'react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Badge} from '@/components/ui/badge';
+import {toast} from 'sonner';
 import {AlertTriangle, BarChart3, Clock, DollarSign, Package, ShoppingCart, TrendingUp, Users,} from 'lucide-react';
 
 interface DashboardStats {
@@ -40,6 +41,7 @@ export default function DashboardPage() {
                 }
             } catch (e) {
                 console.error('加载仪表盘数据失败:', e);
+                toast.error('加载失败，请重试');
             } finally {
                 setLoading(false);
             }

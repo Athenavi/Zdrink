@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     Package,
     Printer,
+    Receipt,
     Settings,
     ShoppingCart,
     Store,
@@ -18,29 +19,23 @@ import {
 } from 'lucide-react';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {useUserStore} from '@/stores/user';
 
 interface NavItem {
     label: string;
     href: string;
     icon: React.ReactNode;
-    permissions?: string[];
 }
 
 const navItems: NavItem[] = [
     {label: '仪表盘', href: '/admin/dashboard', icon: <LayoutDashboard size={18}/>},
-    {
-        label: '订单管理',
-        href: '/admin/orders',
-        icon: <ShoppingCart size={18}/>,
-        permissions: ['order_manage', 'order_process']
-    },
-    {label: '商品管理', href: '/admin/products', icon: <Package size={18}/>, permissions: ['product_manage']},
-    {label: '客户管理', href: '/admin/customers', icon: <Users size={18}/>, permissions: ['customer_manage']},
-    {label: '优惠促销', href: '/admin/coupons', icon: <TicketPercent size={18}/>, permissions: ['product_manage']},
-    {label: '打印管理', href: '/admin/printing', icon: <Printer size={18}/>, permissions: ['setting_manage']},
-    {label: '店铺设置', href: '/admin/settings', icon: <Settings size={18}/>, permissions: ['setting_manage']},
-    {label: '数据报表', href: '/admin/reports', icon: <BarChart3 size={18}/>, permissions: ['report_view']},
+    {label: '订单管理', href: '/admin/orders', icon: <ShoppingCart size={18}/>},
+    {label: '商品管理', href: '/admin/products', icon: <Package size={18}/>},
+    {label: '客户管理', href: '/admin/customers', icon: <Users size={18}/>},
+    {label: '优惠促销', href: '/admin/coupons', icon: <TicketPercent size={18}/>},
+    {label: '打印管理', href: '/admin/printing', icon: <Printer size={18}/>},
+    {label: '店铺设置', href: '/admin/settings', icon: <Settings size={18}/>},
+    {label: '数据报表', href: '/admin/reports', icon: <BarChart3 size={18}/>},
+    {label: 'POS收银', href: '/admin/pos', icon: <Receipt size={18}/>},
 ];
 
 interface AdminSidebarProps {
@@ -50,7 +45,6 @@ interface AdminSidebarProps {
 export function AdminSidebar({onClose}: AdminSidebarProps) {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
-    const userRole = useUserStore((state) => state.userInfo?.user_type);
 
     return (
         <aside
@@ -77,7 +71,7 @@ export function AdminSidebar({onClose}: AdminSidebarProps) {
 
             {/* 导航菜单 */}
             <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-                {navItems.filter(item => !item.permissions || item.permissions.includes(userRole)).map((item) => {
+                {navItems.map((item) => {
                     const isActive = pathname.startsWith(item.href);
                     return (
                         <Link
