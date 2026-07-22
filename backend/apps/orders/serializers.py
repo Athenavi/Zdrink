@@ -12,6 +12,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.CharField(source='product.main_image.url', read_only=True)
     sku_info = serializers.SerializerMethodField()
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
@@ -52,12 +53,6 @@ class CartItemSerializer(serializers.ModelSerializer):
         # 验证库存
         if sku and sku.stock_quantity < quantity:
             raise serializers.ValidationError("库存不足")
-
-        # 设置单价
-        if sku:
-            data['unit_price'] = sku.price
-        else:
-            data['unit_price'] = product.base_price
 
         return data
 

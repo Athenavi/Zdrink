@@ -313,7 +313,7 @@ class ProductImage(models.Model):
         on_delete=models.CASCADE,
         related_name='product_images'
     )
-    image = models.ImageField(upload_to='products/gallery/')
+    image = models.ImageField(upload_to='products/gallery/', blank=True, null=True, verbose_name='图片')
     alt_text = models.CharField(max_length=200, blank=True, verbose_name='替代文本')
     sort_order = models.IntegerField(default=0, verbose_name='排序')
 
