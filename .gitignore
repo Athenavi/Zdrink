@@ -61,3 +61,4 @@ ENV/
 /.bashrc
 /public/Storage/
 /backend/media/
+/.reasonix/

@@ -139,6 +139,7 @@ export default function OrdersPage() {
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<number | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     // 详情弹窗
     const [detailOpen, setDetailOpen] = useState(false);
@@ -452,6 +453,94 @@ export default function OrdersPage() {
         [actionLoading, openDetail, handleConfirm, handleComplete, openCancel],
     );
 
+    // ---------- 批量选择 ----------
+
+    const toggleSelect = useCallback((id: number) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedIds((prev) => {
+            const allIds = orders.map((o) => o.id);
+            const allSelected = allIds.every((id) => prev.has(id));
+            if (allSelected) {
+                return new Set();
+            }
+            return new Set(allIds);
+        });
+    }, [orders]);
+
+    // 当前页选中的订单
+    const selectedOrders = useMemo(
+        () => orders.filter((o) => selectedIds.has(o.id)),
+        [orders, selectedIds],
+    );
+
+    // 判断可用批量操作
+    const canBatchConfirm = selectedOrders.some((o) => o.status === 'paid');
+    const canBatchComplete = selectedOrders.some((o) => o.status === 'preparing');
+    const canBatchCancel = selectedOrders.some(
+        (o) => o.status === 'pending' || o.status === 'paid',
+    );
+
+    // ---------- 批量操作 ----------
+
+    const handleBatchStatusUpdate = useCallback(
+        async (targetStatus: string) => {
+            const ids = Array.from(selectedIds);
+            if (ids.length === 0) return;
+            const api = (await import('@/lib/api')).default;
+            const results = await Promise.allSettled(
+                ids.map((id) =>
+                    api.post(`/api/orders/orders/${id}/update_status/`, {
+                        status: targetStatus,
+                        notes: '',
+                    }),
+                ),
+            );
+            const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+            const failed = results.filter((r) => r.status === 'rejected').length;
+            if (failed > 0) {
+                toast.error(`操作完成：成功 ${succeeded} 项，失败 ${failed} 项`);
+            } else {
+                toast.success(`成功操作 ${succeeded} 项`);
+            }
+            setSelectedIds(new Set());
+            await loadOrders();
+            await loadStats();
+        },
+        [selectedIds, loadOrders, loadStats],
+    );
+
+    const handleBatchCancel = useCallback(async () => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        const api = (await import('@/lib/api')).default;
+        const results = await Promise.allSettled(
+            ids.map((id) =>
+                api.post(`/api/orders/orders/${id}/cancel/`, {notes: ''}),
+            ),
+        );
+        const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+            toast.error(`操作完成：成功 ${succeeded} 项，失败 ${failed} 项`);
+        } else {
+            toast.success(`成功取消 ${succeeded} 项`);
+        }
+        setSelectedIds(new Set());
+        await loadOrders();
+        await loadStats();
+    }, [selectedIds, loadOrders, loadStats]);
+
     // ---------- 统计卡片配置 ----------
 
     const statCards = useMemo(
@@ -566,22 +655,81 @@ export default function OrdersPage() {
                         </div>
                     ) : (
                         <>
+                            {/* 批量操作栏 */}
+                            {selectedIds.size > 0 && (
+                                <div className="mb-3 flex items-center gap-3 rounded-lg border bg-muted/30 px-4 py-2.5">
+                                    <span className="text-sm font-medium">
+                                        已选 <span className="text-primary">{selectedIds.size}</span> 项
+                                    </span>
+                                    <div className="flex items-center gap-2 ml-2">
+                                        {canBatchConfirm && (
+                                            <Button
+                                                size="xs"
+                                                variant="default"
+                                                onClick={() => handleBatchStatusUpdate('preparing')}
+                                            >
+                                                <CheckCircle2 size={14}/>
+                                                <span className="ml-1">批量确认</span>
+                                            </Button>
+                                        )}
+                                        {canBatchComplete && (
+                                            <Button
+                                                size="xs"
+                                                variant="default"
+                                                onClick={() => handleBatchStatusUpdate('completed')}
+                                            >
+                                                <CheckCircle2 size={14}/>
+                                                <span className="ml-1">批量完成</span>
+                                            </Button>
+                                        )}
+                                        {canBatchCancel && (
+                                            <Button
+                                                size="xs"
+                                                variant="destructive"
+                                                onClick={handleBatchCancel}
+                                            >
+                                                <XCircle size={14}/>
+                                                <span className="ml-1">批量取消</span>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             {/* 表格 */}
                             <div className="rounded-lg border overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[160px]">订单号</TableHead>
+                                            <TableHead className="w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={orders.length > 0 && orders.every((o) => selectedIds.has(o.id))}
+                                                    onChange={toggleSelectAll}
+                                                    className="size-4 cursor-pointer"
+                                                />
+                                            </TableHead>
+                                            <TableHead className="w-[140px]">订单号</TableHead>
                                             <TableHead>客户</TableHead>
                                             <TableHead className="text-right">金额</TableHead>
                                             <TableHead className="text-center">状态</TableHead>
-                                            <TableHead className="w-[140px]">时间</TableHead>
+                                            <TableHead className="w-[130px] hidden sm:table-cell">时间</TableHead>
                                             <TableHead className="text-right w-[180px]">操作</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {orders.map((order) => (
-                                            <TableRow key={order.id}>
+                                            <TableRow
+                                                key={order.id}
+                                                className={selectedIds.has(order.id) ? 'bg-muted/50' : undefined}
+                                            >
+                                                <TableCell className="w-10">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.has(order.id)}
+                                                        onChange={() => toggleSelect(order.id)}
+                                                        className="size-4 cursor-pointer"
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="font-mono text-xs">
                                                     {order.order_number || order.order_no || `#${order.id}`}
                                                 </TableCell>
@@ -607,7 +755,8 @@ export default function OrdersPage() {
                                                         {STATUS_MAP[order.status]?.label || order.status}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-xs text-muted-foreground">
+                                                <TableCell
+                                                    className="text-xs text-muted-foreground hidden sm:table-cell">
                                                     {formatDateTime(order.created_at)}
                                                 </TableCell>
                                                 <TableCell className="text-right">

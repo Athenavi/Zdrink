@@ -265,12 +265,12 @@ function CouponsTab() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>名称</TableHead>
-                                <TableHead>编码</TableHead>
+                                <TableHead className="hidden md:table-cell">编码</TableHead>
                                 <TableHead>类型</TableHead>
                                 <TableHead>面值</TableHead>
-                                <TableHead>最低消费</TableHead>
-                                <TableHead className="text-center">总量</TableHead>
-                                <TableHead className="text-center">已用</TableHead>
+                                <TableHead className="hidden md:table-cell">最低消费</TableHead>
+                                <TableHead className="hidden md:table-cell text-center">总量</TableHead>
+                                <TableHead className="hidden md:table-cell text-center">已用</TableHead>
                                 <TableHead>有效期</TableHead>
                                 <TableHead>状态</TableHead>
                                 <TableHead className="text-right">操作</TableHead>
@@ -293,7 +293,7 @@ function CouponsTab() {
                                 coupons.map((coupon) => (
                                     <TableRow key={coupon.id}>
                                         <TableCell className="font-medium">{coupon.name}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                                                 {coupon.code}
                                             </code>
@@ -304,9 +304,12 @@ function CouponsTab() {
                                                 ? `${toNumber(coupon.value)}%`
                                                 : formatPrice(coupon.value)}
                                         </TableCell>
-                                        <TableCell>{formatPrice(coupon.min_amount)}</TableCell>
-                                        <TableCell className="text-center">{coupon.max_count}</TableCell>
-                                        <TableCell className="text-center">{coupon.used_count}</TableCell>
+                                        <TableCell
+                                            className="hidden md:table-cell">{formatPrice(coupon.min_amount)}</TableCell>
+                                        <TableCell
+                                            className="hidden md:table-cell text-center">{coupon.max_count}</TableCell>
+                                        <TableCell
+                                            className="hidden md:table-cell text-center">{coupon.used_count}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                             {coupon.valid_from || coupon.valid_until
                                                 ? `${formatDate(coupon.valid_from)} ~ ${formatDate(coupon.valid_until)}`
@@ -644,7 +647,7 @@ function PromotionsTab() {
                             <TableRow>
                                 <TableHead>名称</TableHead>
                                 <TableHead>类型</TableHead>
-                                <TableHead>活动条件</TableHead>
+                                <TableHead className="hidden md:table-cell">活动条件</TableHead>
                                 <TableHead>折扣</TableHead>
                                 <TableHead>有效期</TableHead>
                                 <TableHead>状态</TableHead>
@@ -669,7 +672,8 @@ function PromotionsTab() {
                                     <TableRow key={promo.id}>
                                         <TableCell className="font-medium">{promo.name}</TableCell>
                                         <TableCell>{typeBadge(promo.promo_type)}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                                        <TableCell
+                                            className="hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">
                                             {promo.condition || '—'}
                                         </TableCell>
                                         <TableCell className="font-medium">{renderDiscount(promo)}</TableCell>

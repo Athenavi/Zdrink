@@ -128,6 +128,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductCreateSerializer(serializers.ModelSerializer):
     """商品创建序列化器"""
 
+    main_image = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = Product
         exclude = ('shop', 'created_by')

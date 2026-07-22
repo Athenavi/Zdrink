@@ -76,7 +76,7 @@ class Product(models.Model):
     )
 
     # 图片
-    main_image = models.ImageField(upload_to='products/main/', verbose_name='主图')
+    main_image = models.ImageField(upload_to='products/main/', blank=True, null=True, verbose_name='主图')
     images = models.JSONField(default=list, blank=True, verbose_name='商品图集')
 
     # 状态和属性

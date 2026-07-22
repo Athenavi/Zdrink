@@ -125,6 +125,18 @@ export default function ProductsPage() {
     const [stockQuantity, setStockQuantity] = useState(0)
     const [stockReason, setStockReason] = useState('')
 
+    // 新增商品 Dialog
+    const [createDialogOpen, setCreateDialogOpen] = useState(false)
+    const [createForm, setCreateForm] = useState({
+        name: '',
+        category: '',
+        base_price: '',
+        stock: '0',
+        status: 'active',
+        description: '',
+    })
+    const [createSaving, setCreateSaving] = useState(false)
+
     // 删除分类确认
     const [deletingCatId, setDeletingCatId] = useState<number | null>(null)
 
@@ -340,6 +352,41 @@ export default function ProductsPage() {
         }
     }
 
+    const handleCreateProduct = async () => {
+        if (!createForm.name.trim()) {
+            toast.error('请输入商品名称')
+            return
+        }
+        if (!createForm.base_price || Number(createForm.base_price) <= 0) {
+            toast.error('请输入有效的价格')
+            return
+        }
+        setCreateSaving(true)
+        try {
+            const payload: Record<string, unknown> = {
+                name: createForm.name.trim(),
+                base_price: Number(createForm.base_price),
+                status: createForm.status,
+                description: createForm.description.trim(),
+            }
+            if (createForm.category) {
+                payload.category = Number(createForm.category)
+            }
+            await apiClient.post('/products/products/', payload)
+            toast.success('商品创建成功')
+            setCreateDialogOpen(false)
+            await fetchProducts()
+        } catch (e: unknown) {
+            const msg = (e && typeof e === 'object' && 'response' in e)
+                ? String((e as any).response?.data && typeof (e as any).response.data === 'object'
+                    ? JSON.stringify((e as any).response.data) : (e as any).response?.data || '')
+                : '创建商品失败'
+            toast.error(`创建失败: ${msg}`)
+        } finally {
+            setCreateSaving(false)
+        }
+    }
+
     const openStockDialog = (product: ProductItem) => {
         setStockProduct(product)
         setStockSkuId(product.skus?.[0]?.id ?? null)
@@ -449,7 +496,16 @@ export default function ProductsPage() {
                         {/* 新增商品按钮 */}
                         <Button
                             className="sm:text-sm text-xs"
-                            onClick={() => {/* 后续实现新增商品页面/弹窗 */
+                            onClick={() => {
+                                setCreateForm({
+                                    name: '',
+                                    category: '',
+                                    base_price: '',
+                                    stock: '0',
+                                    status: 'active',
+                                    description: ''
+                                });
+                                setCreateDialogOpen(true);
                             }}>
                             <Plus size={16}/>
                             新增商品
@@ -475,9 +531,9 @@ export default function ProductsPage() {
                                 <TableRow>
                                     <TableHead className="w-[60px]">图片</TableHead>
                                     <TableHead>商品名称</TableHead>
-                                    <TableHead className="w-[100px]">分类</TableHead>
+                                    <TableHead className="w-[100px] hidden md:table-cell">分类</TableHead>
                                     <TableHead className="w-[100px] text-right">基础价格</TableHead>
-                                    <TableHead className="w-[70px] text-center">SKU 数</TableHead>
+                                    <TableHead className="w-[70px] text-center hidden md:table-cell">SKU 数</TableHead>
                                     <TableHead className="w-[80px] text-center">库存</TableHead>
                                     <TableHead className="w-[80px] text-center">状态</TableHead>
                                     <TableHead className="w-[180px] text-right">操作</TableHead>
@@ -521,7 +577,7 @@ export default function ProductsPage() {
                                             </TableCell>
 
                                             {/* 分类 */}
-                                            <TableCell className="text-muted-foreground">
+                                            <TableCell className="text-muted-foreground hidden md:table-cell">
                                                 {product.category_name ?? (() => {
                                                     const cat = categories.find(c => c.id === product.category)
                                                     return cat?.name ?? '—'
@@ -534,7 +590,7 @@ export default function ProductsPage() {
                                             </TableCell>
 
                                             {/* SKU 数 */}
-                                            <TableCell className="text-center">
+                                            <TableCell className="text-center hidden md:table-cell">
                                                 {getSkuCount(product)}
                                             </TableCell>
 
@@ -602,6 +658,86 @@ export default function ProductsPage() {
                     </div>
                 )}
             </Card>
+
+            {/* ── 新增商品 Dialog ── */}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="w-[95vw] sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>新增商品</DialogTitle>
+                        <DialogDescription>填写商品基本信息，创建后可在商品详情中添加 SKU 和属性</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium">商品名称 *</label>
+                            <Input
+                                value={createForm.name}
+                                onChange={e => setCreateForm(p => ({...p, name: e.target.value}))}
+                                placeholder="输入商品名称"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">基础价格 *</label>
+                                <Input
+                                    type="number" min={0} step={0.01}
+                                    value={createForm.base_price}
+                                    onChange={e => setCreateForm(p => ({...p, base_price: e.target.value}))}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">分类</label>
+                                <Select
+                                    value={createForm.category}
+                                    onValueChange={v => setCreateForm(p => ({...p, category: v}))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="选择分类"/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">状态</label>
+                                <Select
+                                    value={createForm.status}
+                                    onValueChange={v => setCreateForm(p => ({...p, status: v}))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">上架</SelectItem>
+                                        <SelectItem value="draft">下架</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium">描述</label>
+                            <Input
+                                value={createForm.description}
+                                onChange={e => setCreateForm(p => ({...p, description: e.target.value}))}
+                                placeholder="商品描述（可选）"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">取消</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateProduct} disabled={createSaving}>
+                            {createSaving ? '创建中...' : '创建商品'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* ── 编辑商品 Dialog ── */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
